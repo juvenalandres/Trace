@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trace
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trace_password}
+      POSTGRES_DB: trace
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trace"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      TRACE_DATABASE_URL: postgresql+asyncpg://trace:${POSTGRES_PASSWORD:-trace_password}@db:5432/trace
+      TRACE_JWT_SECRET: ${TRACE_JWT_SECRET}
+      TRACE_STORAGE_DIR: /app/data/gpx
+      TRACE_CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trace_password}
+      DB_HOST: db
+      DB_NAME: trace
+      DB_USER: trace
+      RETENTION_DAYS: 7
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command: >
+      -c "
+      echo '0 2 * * * /usr/local/bin/backup.sh >> /backups/backup.log 2>&1' > /tmp/crontab &&
+      echo 'Starting backup scheduler...' &&
+      crond -f -l 2
+      "

@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trace"
+version = "0.1.0"
+description = "Self-hosted activity tracking & training platform"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.34,<1",
+    "sqlalchemy[asyncio]>=2.0,<3",
+    "asyncpg>=0.30,<1",
+
+    "alembic>=1.14,<2",
+    "pydantic-settings>=2.7,<3",
+    "pydantic[email]>=2.9,<3",
+    "email-validator>=2.0,<3",
+    "python-dotenv>=1.0,<2",
+    "gpxpy>=1.6,<2",
+    "defusedxml>=0.7,<1",
+    "fitparse>=1.2,<2",
+    "httpx>=0.28,<1",
+    "polyline>=2.0,<3",
+    "simplification>=0.7,<1",
+    "haversine>=2.8,<3",
+    "python-multipart>=0.0.18,<1",
+    "python-jose[cryptography]>=3.3,<4",
+    "passlib[bcrypt]>=1.7,<2",
+    "bcrypt>=4.0,<5",
+    "slowapi>=0.1.9,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.25,<1",
+    "ruff>=0.9,<1",
+    "mypy>=1.15,<2",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+
+[tool.setuptools.packages.find]
+include = ["trace_app*"]

@@ -1,0 +1,149 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import StatCard from '$lib/components/StatCard.svelte';
+  import SportBreakdown from '$lib/components/SportBreakdown.svelte';
+  import ActivityTable from '$lib/components/ActivityTable.svelte';
+  import HeatmapCalendar from '$lib/components/HeatmapCalendar.svelte';
+  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+  import ErrorBanner from '$lib/components/ErrorBanner.svelte';
+  import EmptyState from '$lib/components/EmptyState.svelte';
+  import { statsApi } from '$lib/api/types';
+  import type { DashboardResponse, HeatmapDay } from '$lib/api/types';
+
+  interface Props {
+    onNavigate?: (page: string, id?: number) => void;
+  }
+
+  let { onNavigate }: Props = $props();
+
+  let dashboard = $state<DashboardResponse | null>(null);
+  let heatmapData = $state<HeatmapDay[]>([]);
+  let loading = $state(true);
+  let error = $state('');
+
+  function formatKm(m: number): string {
+    return (m / 1000).toFixed(1);
+  }
+
+  function formatDuration(s: number): string {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = Math.floor(s % 60);
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  }
+
+  async function load() {
+    loading = true;
+    error = '';
+    try {
+      const [dash, hm] = await Promise.all([
+        statsApi.dashboard(),
+        statsApi.heatmap(),
+      ]);
+      dashboard = dash;
+      heatmapData = hm;
+    } catch (e: unknown) {
+      error = e instanceof Error ? e.message : 'Failed to load dashboard';
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(load);
+</script>
+
+<div class="dashboard">
+  <h1>Dashboard</h1>
+
+  {#if loading}
+    <LoadingSpinner size="lg" />
+  {:else if error}
+    <ErrorBanner message={error} retry={load} />
+  {:else if dashboard}
+    <div class="period-section">
+      <h2>This Week</h2>
+      <div class="stat-grid">
+        <StatCard label="Distance" value={formatKm(dashboard.week.distance_m)} unit="km" icon="distance" />
+        <StatCard label="Duration" value={formatDuration(dashboard.week.duration_s)} icon="duration" />
+        <StatCard label="Elevation" value={+dashboard.week.elevation_gain.toFixed(1)} unit="m" icon="elevation" />
+        <StatCard label="Activities" value={dashboard.week.activity_count} icon="activity" />
+      </div>
+    </div>
+
+    <div class="period-section">
+      <h2>This Month</h2>
+      <div class="stat-grid">
+        <StatCard label="Distance" value={formatKm(dashboard.month.distance_m)} unit="km" icon="distance" />
+        <StatCard label="Duration" value={formatDuration(dashboard.month.duration_s)} icon="duration" />
+        <StatCard label="Elevation" value={+dashboard.month.elevation_gain.toFixed(1)} unit="m" icon="elevation" />
+        <StatCard label="Activities" value={dashboard.month.activity_count} icon="activity" />
+      </div>
+    </div>
+
+    <div class="period-section">
+      <h2>All Time</h2>
+      <div class="stat-grid">
+        <StatCard label="Distance" value={formatKm(dashboard.all_time.distance_m)} unit="km" icon="distance" />
+        <StatCard label="Duration" value={formatDuration(dashboard.all_time.duration_s)} icon="duration" />
+        <StatCard label="Elevation" value={+dashboard.all_time.elevation_gain.toFixed(1)} unit="m" icon="elevation" />
+        <StatCard label="Activities" value={dashboard.all_time.activity_count} icon="activity" />
+      </div>
+    </div>
+
+    {#if heatmapData.length > 0}
+      <div class="section">
+        <HeatmapCalendar data={heatmapData} />
+      </div>
+    {/if}
+
+    {#if dashboard.by_sport.length > 0}
+      <div class="section">
+        <h2>By Sport</h2>
+        <SportBreakdown data={dashboard.by_sport} />
+      </div>
+    {/if}
+
+    {#if dashboard.recent.length > 0}
+      <div class="section">
+        <h2>Recent Activities</h2>
+        <ActivityTable activities={dashboard.recent} onRowClick={(id) => onNavigate?.('activity', id)} />
+      </div>
+    {/if}
+  {/if}
+</div>
+
+<style>
+  .dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 24px;
+  }
+  h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+  }
+  .period-section {
+    margin-bottom: 32px;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .section {
+    margin-bottom: 32px;
+  }
+  @media (max-width: 768px) {
+    .dashboard { padding: 16px; }
+    h1 { font-size: 22px; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  }
+</style>

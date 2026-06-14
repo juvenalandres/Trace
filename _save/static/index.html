@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strava Alt</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+</head>
+<body>
+<div class="layout" x-data="app()" x-init="init()">
+  <aside class="sidebar">
+    <div class="brand">Strava Alt</div>
+    <nav>
+      <a :class="{ active: view === 'dashboard' }" @click.prevent="view='dashboard'">📊 Dashboard</a>
+      <a :class="{ active: view === 'list' }" @click.prevent="view='list'; loadList(1)">🏃 Activities</a>
+      <a :class="{ active: view === 'heatmap' }" @click.prevent="view='heatmap'; initHeatmap()">🗺️  Heatmap</a>
+      <a :class="{ active: view === 'monthly' }" @click.prevent="view='monthly'; loadMonthly(monthlyYear||(new Date().getFullYear()), monthlyMonth||(new Date().getMonth()+1))">📅 Monthly</a>
+      <a :class="{ active: view === 'eddington' }" @click.prevent="view='eddington'; loadEddington()">📈 Eddington</a>
+      <a :class="{ active: view === 'gear' }" @click.prevent="view='gear'; initGear()">⚙️  Gear</a>
+      <a :class="{ active: view === 'upload' }" @click.prevent="view='upload'">📤 Upload</a>
+      <a :class="{ active: view === 'training' }" @click.prevent="view='training'">🗓️  Training</a>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <!-- ====== DASHBOARD ====== -->
+    <div x-show="view === 'dashboard'" x-transition>
+      <div class="page-title">Dashboard</div>
+      <template x-if="dashboardLoading"><div class="card" style="text-align:center;padding:48px"><div class="spinner"></div></div></template>
+      <template x-if="!dashboardLoading && dashboard">
+        <div>
+          <div class="stat-card-grid">
+            <div x-data="statCard({ label:'This Week', value: ((dashboard.week.distance_meters??0)/1000).toFixed(1), unit:'km', icon:'route' })" class="stat-card">
+              <div class="stat-card-icon" x-html="iconSvg"></div>
+              <div class="stat-card-label" x-text="label"></div>
+              <div class="stat-card-value"><template x-if="unit"><span><span x-text="val"></span><span class="stat-card-unit" x-text="unit"></span></span></template></div>
+            </div>
+            <div x-data="statCard({ label:'This Month', value: ((dashboard.month.distance_meters??0)/1000).toFixed(1), unit:'km', icon:'route' })" class="stat-card">
+              <div class="stat-card-icon" x-html="iconSvg"></div>
+              <div class="stat-card-label" x-text="label"></div>
+              <div class="stat-card-value"><template x-if="unit"><span><span x-text="val"></span><span class="stat-card-unit" x-text="unit"></span></span></template></div>
+            </div>
+            <div x-data="statCard({ label:'This Year', value: ((dashboard.year.distance_meters??0)/1000).toFixed(1), unit:'km', icon:'route' })" class="stat-card">
+              <div class="stat-card-icon" x-html="iconSvg"></div>
+              <div class="stat-card-label" x-text="label"></div>
+              <div class="stat-card-value"><template x-if="unit"><span><span x-text="val"></span><span class="stat-card-unit" x-text="unit"></span></span></template></div>
+            </div>
+            <div x-data="statCard({ label:'All Time', value: ((dashboard.all_time.distance_meters??0)/1000).toFixed(1), unit:'km', icon:'route' })" class="stat-card">
+              <div class="stat-card-icon" x-html="iconSvg"></div>
+              <div class="stat-card-label" x-text="label"></div>
+              <div class="stat-card-value"><template x-if="unit"><span><span x-text="val"></span><span class="stat-card-unit" x-text="unit"></span></span></template></div>
+            </div>
+          </div>
+
+          <div class="stat-card-grid">
+            <div x-data="statCard({ label:'Activities', value: String(dashboard.week.activity_count??0), icon:'hash' })" class="stat-card">
+              <div class="stat-card-icon" x-html="iconSvg"></div>
+              <div class="stat-card-label" x-text="label"></div>
+              <div class="stat-card-value"><template x-if="!unit"><span x-text="val"></span></template></div>
+            </div>
+            <div x-data="statCard({ label:'Duration', value: (function(){let s=dashboard.week.duration_seconds??0; return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';})(), icon:'clock' })" class="stat-card">
+              <div class="stat-card-icon" x-html="iconSvg"></div>
+              <div class="stat-card-label" x-text="label"></div>
+              <div class="stat-card-value"><template x-if="!unit"><span x-text="val"></span></template></div>
+            </div>
+            <div x-data="statCard({ label:'Elevation', value: (dashboard.week.elevation_gain_meters??0).toFixed(0), unit:'m', icon:'mountain' })" class="stat-card">
+              <div class="stat-card-icon" x-html="iconSvg"></div>
+              <div class="stat-card-label" x-text="label"></div>
+              <div class="stat-card-value"><template x-if="unit"><span><span x-text="val"></span><span class="stat-card-unit" x-text="unit"></span></span></template></div>
+            </div>
+          </div>
+
+          <div x-data="sportBreakdown({ items: dashboard.by_sport })" class="card" x-show="items.length > 0">
+            <h3>Sport Breakdown</h3>
+            <template x-for="s in items" :key="s.sport_type">
+              <div class="sport-bar">
+                <span class="badge" :class="'badge-'+s.sport_type" x-text="s.sport_type"></span>
+                <div class="sport-bar-track"><div class="sport-bar-fill" :style="'width:'+barWidth(s.distance_meters)+'%;background:'+barColor(s.sport_type)"></div></div>
+                <span class="sport-bar-value" x-text="fmtDist(s.distance_meters)"></span>
+              </div>
+            </template>
+            <table style="margin-top:12px">
+              <thead><tr><th>Sport</th><th>Activities</th><th>Distance</th><th>Duration</th></tr></thead>
+              <tbody>
+                <template x-for="s in items" :key="s.sport_type">
+                  <tr><td><span class="badge" :class="'badge-'+s.sport_type" x-text="s.sport_type"></span></td><td x-text="s.activity_count"></td><td x-text="fmtDist(s.distance_meters)"></td><td x-text="fmtDur(s.duration_seconds)"></td></tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <div x-data="activityTable({ activities: dashboard.recent, title: 'Most recent activities', onRowClick: (id) => showDetail(id) })" class="card">
+            <div class="flex-between" style="margin-bottom:8px">
+              <h3 style="margin:0" x-text="title"></h3>
+              <a href="#" @click.prevent="view='list'; loadList(1)" style="font-size:13px;color:#1565c0;text-decoration:none">View all</a>
+            </div>
+            <div class="empty-state" style="padding:24px" x-show="items.length === 0" x-text="emptyMsg"></div>
+            <table class="activity-list-table" x-show="items.length > 0">
+              <thead><tr><th>Date</th><th>Title</th><th>Dist.</th><th>Elev.</th><th>Time</th><th>Speed</th><th>HR</th><th>Cal.</th></tr></thead>
+              <tbody>
+                <template x-for="a in items" :key="a.id">
+                  <tr @click="rowClick(a)">
+                    <td x-text="a.start_time.slice(0,10)"></td>
+                    <td>
+                      <span class="sport-icon" x-text="sportIcon(a.sport_type)"></span>
+                      <a href="#" @click.prevent="rowClick(a)" x-text="a.name"></a>
+                    </td>
+                    <td x-text="fmtDist(a.distance_meters)"></td>
+                    <td x-text="fmtElev(a.elevation_gain_meters)"></td>
+                    <td x-text="fmtDur(a.duration_seconds)"></td>
+                    <td x-text="speed(a)"></td>
+                    <td x-text="a.avg_heartrate ?? '\u2014'"></td>
+                    <td><span x-text="a.calories ?? '\u2014'"></span><span x-show="a.calories" style="color:var(--color-muted);font-size:11px"> kcal</span></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ====== ACTIVITY LIST ====== -->
+    <div x-show="view === 'list'" x-transition>
+      <div class="page-title">Activities</div>
+      <div x-data="dateRangeFilter({ sport: filter.sport, startDate: filter.startDate, endDate: filter.endDate, onChange: () => loadList(1) })" class="filters">
+        <div><label>Sport</label>
+          <select x-model="sport" @change="filter.sport=sport; change()">
+            <option value="">All</option>
+            <option value="run">Run</option><option value="ride">Ride</option>
+            <option value="swim">Swim</option><option value="hike">Hike</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div><label>From</label><input type="date" x-model="startDate" @change="filter.startDate=startDate; change()"></div>
+        <div><label>To</label><input type="date" x-model="endDate" @change="filter.endDate=endDate; change()"></div>
+      </div>
+
+      <template x-if="loading"><div class="card" style="text-align:center;padding:48px"><div class="spinner"></div></div></template>
+
+      <template x-if="!loading && activities.length === 0">
+        <div class="empty-state"><p>No activities yet. Upload a GPX or create one.</p></div>
+      </template>
+
+      <template x-if="!loading && activities.length > 0">
+        <div class="card">
+          <table>
+            <thead><tr><th>Date</th><th>Name</th><th>Type</th><th>Distance</th><th>Duration</th><th>Elev</th></tr></thead>
+            <tbody>
+              <template x-for="a in activities" :key="a.id">
+                <tr @click="showDetail(a.id)">
+                  <td x-text="a.start_time.slice(0,10)"></td>
+                  <td x-text="a.name"></td>
+                  <td><span class="badge" :class="'badge-'+a.sport_type" x-text="a.sport_type"></span></td>
+                  <td x-text="fmtDist(a.distance_meters)"></td>
+                  <td x-text="fmtDur(a.duration_seconds)"></td>
+                  <td x-text="fmtElev(a.elevation_gain_meters)"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <div class="pagination">
+            <button class="btn btn-sm btn-secondary" :disabled="page<=1" @click="loadList(page-1)">Prev</button>
+            <span x-text="'Page ' + page + ' of ' + totalPages"></span>
+            <button class="btn btn-sm btn-secondary" :disabled="page>=totalPages" @click="loadList(page+1)">Next</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ====== ACTIVITY DETAIL ====== -->
+    <div x-show="view === 'detail'" x-transition>
+      <button class="btn btn-sm btn-secondary" @click="view='list'; loadList(page)">← Back</button>
+      <template x-if="loading"><div class="card" style="text-align:center;padding:48px"><div class="spinner"></div></div></template>
+
+      <template x-if="!loading && detail">
+        <div>
+          <div class="card">
+            <div class="flex-between">
+              <div>
+                <h2 style="margin:0" x-text="detail.name"></h2>
+                <div style="margin-top:4px">
+                  <span class="badge" :class="'badge-'+detail.sport_type" x-text="detail.sport_type"></span>
+                  <span style="color:#888;font-size:13px;margin-left:8px" x-text="detail.start_time.slice(0,16).replace('T',' ')"></span>
+                </div>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-sm" @click="editMode=true">Edit</button>
+                <button class="btn btn-sm btn-danger" @click="deleteActivity(detail.id)">Delete</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="stats-grid">
+              <div class="stat"><div class="stat-value" x-text="fmtDist(detail.distance_meters)"></div><div class="stat-label">Distance</div></div>
+              <div class="stat"><div class="stat-value" x-text="fmtDur(detail.duration_seconds)"></div><div class="stat-label">Duration</div></div>
+              <div class="stat"><div class="stat-value" x-text="fmtPace(detail.duration_seconds, detail.distance_meters)"></div><div class="stat-label">Pace</div></div>
+              <div class="stat"><div class="stat-value" x-text="fmtElev(detail.elevation_gain_meters)"></div><div class="stat-label">Elevation</div></div>
+              <div class="stat"><div class="stat-value" x-text="detail.avg_heartrate ?? '—'"></div><div class="stat-label">Avg HR</div></div>
+              <div class="stat"><div class="stat-value" x-text="detail.max_heartrate ?? '—'"></div><div class="stat-label">Max HR</div></div>
+              <div class="stat"><div class="stat-value" x-text="detail.calories ?? '—'"></div><div class="stat-label">Calories</div></div>
+              <div class="stat"><div class="stat-value" x-text="detail.avg_speed ? detail.avg_speed.toFixed(1)+' m/s' : '—'"></div><div class="stat-label">Avg Speed</div></div>
+            </div>
+          </div>
+
+          <div x-data="routeChartPanel({ polyline: detail.route?.polyline, elevationProfile: detail.route?.elevation_profile, timeSeries: detail.route?.time_series })" class="card" x-show="detail.route" x-transition>
+            <h2>Route</h2>
+            <div class="map-container" x-ref="mapEl"></div>
+            <div class="chart-strip">
+              <div class="chart-mini" x-data="lineChart({ labels: elevLabels, dataset: elevData, color: '#1a1a2e', height: 120, onHover: (i) => _setHover(i) })" x-show="elevLabels.length">
+                <canvas x-ref="canvas"></canvas>
+              </div>
+              <div class="chart-mini" x-data="lineChart({ labels: elevLabels, dataset: spdData, color: '#2e7d32', fill: false, height: 80, onHover: (i) => _setHover(i) })" x-show="hasSpd">
+                <canvas x-ref="canvas"></canvas>
+              </div>
+              <div class="chart-mini" x-data="lineChart({ labels: elevLabels, dataset: hrData, color: '#c62828', fill: false, height: 80, onHover: (i) => _setHover(i) })" x-show="hasHr">
+                <canvas x-ref="canvas"></canvas>
+              </div>
+            </div>
+            <div class="chart-toolbar" x-show="hoveredPoint" x-text="tooltipText"></div>
+          </div>
+
+          <div class="card" x-show="detail.description">
+            <h2>Notes</h2>
+            <p x-text="detail.description"></p>
+          </div>
+
+          <div x-data="{ close() { editMode = false } }" x-show="editMode" class="modal-overlay" @click.self="close()">
+            <div class="modal">
+              <div class="flex-between"><h3 style="margin:0">Edit Activity</h3><button class="btn btn-sm btn-secondary" @click="close()">✕</button></div>
+              <div style="margin-top:16px">
+                <div class="form-group"><label>Name</label><input type="text" x-model="editForm.name"></div>
+                <div class="form-group"><label>Description</label><textarea x-model="editForm.description" rows="3"></textarea></div>
+                <div class="form-group"><label>Perceived Exertion (1-10)</label><input type="number" min="1" max="10" x-model="editForm.perceived_exertion"></div>
+                <div class="form-actions">
+                  <button class="btn" @click="saveEdit()">Save</button>
+                  <button class="btn btn-secondary" @click="close()">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ====== HEATMAP ====== -->
+    <div x-show="view === 'heatmap'" x-transition>
+      <div class="page-title">Heatmap</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="heatmap-container" class="map-container" style="height:70vh;border-radius:0"></div>
+      </div>
+    </div>
+
+    <!-- ====== MONTHLY ====== -->
+    <div x-show="view === 'monthly'" x-transition>
+      <div class="page-title">Monthly View</div>
+      <template x-if="monthlyLoading"><div class="card" style="text-align:center;padding:48px"><div class="spinner"></div></div></template>
+      <template x-if="!monthlyLoading && monthlyData">
+        <div>
+          <div x-data="periodNav({ label: monthlyLabel, onPrev: () => navMonth(-1), onNext: () => navMonth(1) })" class="flex-between" style="margin-bottom:12px">
+            <button class="btn btn-sm btn-secondary" @click="onPrev">← Prev</button>
+            <strong style="font-size:16px" x-text="label"></strong>
+            <button class="btn btn-sm btn-secondary" @click="onNext">Next →</button>
+          </div>
+          <div class="card">
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center">
+              <div style="font-size:11px;color:var(--color-muted);padding:4px">Mon</div>
+              <div style="font-size:11px;color:var(--color-muted);padding:4px">Tue</div>
+              <div style="font-size:11px;color:var(--color-muted);padding:4px">Wed</div>
+              <div style="font-size:11px;color:var(--color-muted);padding:4px">Thu</div>
+              <div style="font-size:11px;color:var(--color-muted);padding:4px">Fri</div>
+              <div style="font-size:11px;color:var(--color-muted);padding:4px">Sat</div>
+              <div style="font-size:11px;color:var(--color-muted);padding:4px">Sun</div>
+
+              <template x-for="slot in calendarSlots" :key="slot.key">
+                <div
+                  :style="slot.day ? 'background:var(--color-bg);border-radius:var(--radius-sm);padding:6px;cursor:pointer' : 'padding:6px'"
+                  @click="slot.day && selectDay(slot.day)"
+                >
+                  <template x-if="slot.day">
+                    <div>
+                      <div style="font-weight:600;font-size:13px" x-text="slot.day"></div>
+                      <div style="font-size:10px;color:var(--color-muted)" x-text="monthlyData.days[slot.day] ? fmtDist(monthlyData.days[slot.day].distance_meters) : ''"></div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <div x-data="activityTable({ activities: selectedDay && monthlyData.days[selectedDay] ? monthlyData.days[selectedDay].activities : [], showTime: true, title: 'Activities on ' + monthlyYear + '-' + String(monthlyMonth).padStart(2,'0') + '-' + String(selectedDay).padStart(2,'0'), onRowClick: (id) => showDetail(id) })" class="card" x-show="selectedDay && monthlyData.days[selectedDay]">
+            <h3 x-text="title"></h3>
+            <div class="empty-state" style="padding:24px" x-show="items.length === 0" x-text="emptyMsg"></div>
+            <table class="activity-list-table" x-show="items.length > 0">
+              <thead><tr><th>Time</th><th>Title</th><th>Dist.</th><th>Elev.</th><th>Time</th><th>Speed</th><th>HR</th><th>Cal.</th></tr></thead>
+              <tbody>
+                <template x-for="a in items" :key="a.id">
+                  <tr @click="rowClick(a)">
+                    <td x-text="a.start_time.slice(11,16)"></td>
+                    <td>
+                      <span class="sport-icon" x-text="sportIcon(a.sport_type)"></span>
+                      <a href="#" @click.prevent="rowClick(a)" x-text="a.name"></a>
+                    </td>
+                    <td x-text="fmtDist(a.distance_meters)"></td>
+                    <td x-text="fmtElev(a.elevation_gain_meters)"></td>
+                    <td x-text="fmtDur(a.duration_seconds)"></td>
+                    <td x-text="speed(a)"></td>
+                    <td x-text="a.avg_heartrate ?? '\u2014'"></td>
+                    <td><span x-text="a.calories ?? '\u2014'"></span><span x-show="a.calories" style="color:var(--color-muted);font-size:11px"> kcal</span></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="stats-grid">
+              <div class="stat"><div class="stat-value" x-text="monthlyData.activity_count"></div><div class="stat-label">Activities</div></div>
+              <div class="stat"><div class="stat-value" x-text="fmtDist(monthlyData.total_distance_meters)"></div><div class="stat-label">Distance</div></div>
+              <div class="stat"><div class="stat-value" x-text="fmtDur(monthlyData.total_duration_seconds)"></div><div class="stat-label">Duration</div></div>
+              <div class="stat"><div class="stat-value" x-text="fmtElev(monthlyData.total_elevation_gain_meters)"></div><div class="stat-label">Elevation</div></div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ====== EDDINGTON ====== -->
+    <div x-show="view === 'eddington'" x-transition>
+      <div class="page-title">Eddington Number</div>
+      <template x-if="eddingtonLoading"><div class="card" style="text-align:center;padding:48px"><div class="spinner"></div></div></template>
+      <template x-if="!eddingtonLoading && eddingtonData">
+        <div>
+          <div class="card" style="text-align:center;padding:24px">
+            <div style="font-size:56px;font-weight:700;color:var(--color-accent);line-height:1" x-text="eddingtonData.eddington_number"></div>
+            <div style="color:var(--color-muted);font-size:14px;margin-top:4px">Eddington Number</div>
+            <div style="margin-top:16px;max-width:300px;margin-left:auto;margin-right:auto">
+              <div class="flex-between" style="font-size:12px;color:var(--color-muted);margin-bottom:4px">
+                <span>Next: E(<span x-text="eddingtonData.next_milestone"></span>)</span>
+                <span x-text="eddingtonData.activities_qualified_for_next + '/' + eddingtonData.next_milestone + ' activities'"></span>
+              </div>
+              <div style="height:8px;background:var(--color-border);border-radius:4px;overflow:hidden">
+                <div style="height:100%;background:var(--color-accent);border-radius:4px;transition:width .3s"
+                  :style="'width:' + Math.min(100, (eddingtonData.activities_qualified_for_next / eddingtonData.next_milestone * 100)) + '%'"></div>
+              </div>
+              <div style="font-size:12px;color:var(--color-muted);margin-top:4px" x-show="eddingtonData.activities_needed_for_next > 0">
+                <span x-text="eddingtonData.activities_needed_for_next"></span> more activity<span x-show="eddingtonData.activities_needed_for_next > 1">ies</span><span x-show="eddingtonData.activities_needed_for_next === 1">y</span> needed
+              </div>
+            </div>
+          </div>
+
+          <div class="card" x-show="eddingtonData.distribution && eddingtonData.distribution.length > 0">
+            <h3>Distribution</h3>
+            <div x-data="lineChart({
+              labels: eddingtonData.distribution.map(d => d.distance_miles + ' mi'),
+              dataset: eddingtonData.distribution.map(d => d.activity_count),
+              color: '#1a1a2e', height: 250, pointRadius: 2,
+              yLabel: 'Activity count',
+              plugins: [{
+                id: 'eLines',
+                afterDraw(chart) {
+                  const e = eddingtonData.eddington_number;
+                  if (!e) return;
+                  const ctx = chart.ctx, xa = chart.scales.x, ya = chart.scales.y;
+                  const x = xa.getPixelForValue(e), y = ya.getPixelForValue(e);
+                  ctx.save();
+                  ctx.beginPath(); ctx.moveTo(xa.left, y); ctx.lineTo(x, y); ctx.lineTo(x, ya.bottom);
+                  ctx.strokeStyle = '#e63946'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke();
+                  ctx.fillStyle = '#e63946'; ctx.font = 'bold 11px sans-serif'; ctx.fillText('E(' + e + ')', x + 4, y - 4);
+                  ctx.restore();
+                }
+              }]
+            })" x-init="init()">
+              <canvas x-ref="canvas" style="width:100%"></canvas>
+            </div>
+          </div>
+
+          <div class="stat-card-grid" x-show="Object.keys(eddingtonData.sport_breakdown).length > 0">
+            <template x-for="(val, sport) in eddingtonData.sport_breakdown" :key="sport">
+              <div x-data="statCard({ label: sport, value: String(val), icon: 'hash' })" class="stat-card">
+                <div class="stat-card-icon" x-html="iconSvg"></div>
+                <div class="stat-card-label" x-text="label"></div>
+                <div class="stat-card-value"><span x-text="val"></span></div>
+              </div>
+            </template>
+          </div>
+
+          <div x-data="activityTable({ activities: eddingtonData.recent_qualifying, emptyMsg: 'No activities qualify yet.', title: 'Qualifying for E(' + eddingtonData.next_milestone + ')', onRowClick: (id) => showDetail(id) })" class="card" x-show="eddingtonData.recent_qualifying && eddingtonData.recent_qualifying.length > 0">
+            <h3 x-text="title"></h3>
+            <div class="empty-state" style="padding:24px" x-show="items.length === 0" x-text="emptyMsg"></div>
+            <table class="activity-list-table" x-show="items.length > 0">
+              <thead><tr><th>Date</th><th>Title</th><th>Dist.</th><th>Elev.</th><th>Time</th><th>Speed</th><th>HR</th><th>Cal.</th></tr></thead>
+              <tbody>
+                <template x-for="a in items" :key="a.id">
+                  <tr @click="rowClick(a)">
+                    <td x-text="a.start_time.slice(0,10)"></td>
+                    <td>
+                      <span class="sport-icon" x-text="sportIcon(a.sport_type)"></span>
+                      <a href="#" @click.prevent="rowClick(a)" x-text="a.name"></a>
+                    </td>
+                    <td x-text="fmtDist(a.distance_meters)"></td>
+                    <td x-text="fmtElev(a.elevation_gain_meters)"></td>
+                    <td x-text="fmtDur(a.duration_seconds)"></td>
+                    <td x-text="speed(a)"></td>
+                    <td x-text="a.avg_heartrate ?? '\u2014'"></td>
+                    <td><span x-text="a.calories ?? '\u2014'"></span><span x-show="a.calories" style="color:var(--color-muted);font-size:11px"> kcal</span></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ====== GEAR ====== -->
+    <div x-show="view === 'gear'" x-transition>
+      <div class="flex-between" style="margin-bottom:16px">
+        <div class="page-title" style="margin:0">Gear</div>
+        <button class="btn btn-sm" @click="showAddGear=true">+ Add</button>
+      </div>
+      <template x-if="gearLoading"><div class="card" style="text-align:center;padding:48px"><div class="spinner"></div></div></template>
+      <template x-if="!gearLoading && gearItems.length === 0">
+        <div class="empty-state"><p>No gear yet.</p></div>
+      </template>
+      <template x-for="g in gearItems" :key="g.id">
+        <div class="card flex-between">
+          <div>
+            <strong x-text="g.name"></strong>
+            <span class="badge" :class="'badge-'+g.gear_type" x-text="g.gear_type" style="margin-left:8px"></span>
+            <span style="color:#888;font-size:13px;margin-left:8px" x-text="fmtDist(g.distance_meters)+' total'"></span>
+            <span x-show="g.retired" style="color:#d32f2f;font-size:12px;margin-left:8px">(retired)</span>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-sm" @click="editGear(g)">Edit</button>
+            <button class="btn btn-sm btn-danger" @click="deleteGear(g.id)">Delete</button>
+          </div>
+        </div>
+      </template>
+
+      <div x-data="{ close() { showAddGear=false; editingGear=null } }" x-show="showAddGear || editingGear" class="modal-overlay" @click.self="close()">
+        <div class="modal">
+          <div class="flex-between"><h3 style="margin:0" x-text="editingGear ? 'Edit Gear' : 'Add Gear'"></h3><button class="btn btn-sm btn-secondary" @click="close()">✕</button></div>
+          <div style="margin-top:16px">
+            <div class="form-group"><label>Name</label><input type="text" x-model="gearForm.name"></div>
+            <div class="form-group"><label>Type</label>
+              <select x-model="gearForm.gear_type">
+                <option value="bike">Bike</option><option value="shoe">Shoe</option><option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Brand</label><input type="text" x-model="gearForm.brand"></div>
+              <div class="form-group"><label>Model</label><input type="text" x-model="gearForm.model"></div>
+            </div>
+            <div class="form-group"><label>Nickname</label><input type="text" x-model="gearForm.nickname"></div>
+            <div class="form-group"><label>Maintenance (km)</label><input type="number" step="1" x-model="gearForm.maintenance_interval_km"></div>
+            <div class="form-actions">
+              <button class="btn" @click="saveGear()"><span x-text="editingGear ? 'Update' : 'Add'"></span></button>
+              <button class="btn btn-secondary" @click="close()">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== UPLOAD ====== -->
+    <div x-show="view === 'upload'" x-transition>
+      <div class="page-title">Upload GPX</div>
+      <div class="card">
+        <div class="upload-zone"
+          @dragover.prevent="dragover=true" @dragleave="dragover=false"
+          @drop.prevent="dragover=false; handleFile($event.dataTransfer.files[0])"
+          @click="pickFile()" :class="{ dragover: dragover }">
+          <template x-if="!uploading && !uploadResult"><p>Drop a GPX file here or click to browse</p></template>
+          <template x-if="uploading"><div><div class="spinner" style="margin:0 auto 8px"></div><p>Processing...</p></div></template>
+          <template x-if="uploadResult">
+            <div>
+              <p style="color:#2e7d32;font-weight:600">✓ Uploaded!</p>
+              <p x-text="uploadResult.name"></p>
+              <button class="btn btn-sm" style="margin-top:8px" @click.stop="showDetail(uploadResult.id)">View</button>
+            </div>
+          </template>
+        </div>
+        <input type="file" accept=".gpx" @change="handleFile($event.target.files[0])" x-ref="fileInput" style="display:none">
+        <p x-show="uploadError" style="color:#d32f2f;margin-top:8px" x-text="uploadError"></p>
+      </div>
+    </div>
+
+    <!-- ====== TRAINING ====== -->
+    <div x-show="view === 'training'" x-transition>
+      <div class="page-title">Training</div>
+      <div class="card"><div class="empty-state">Training calendar coming in Phase 9</div></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const ICONS = {
+  route: '<svg viewBox="0 0 24 24"><path d="M3 12c3-4 6-2 9 0s6 4 9 0"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+  mountain: '<svg viewBox="0 0 24 24"><path d="M3 21l6-12 4 6 3-4 5 10z"/></svg>',
+  heart: '<svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 000-7.8z"/></svg>',
+  speed: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+  hash: '<svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M9 3L7 21M17 3l-2 18"/></svg>',
+};
+
+Alpine.data('statCard', (config) => ({
+  label: config.label || '',
+  val: config.value || '',
+  unit: config.unit || null,
+  iconSvg: ICONS[config.icon] || ICONS.hash,
+}));
+
+Alpine.data('dateRangeFilter', (config) => ({
+  sport: config.sport || '',
+  startDate: config.startDate || '',
+  endDate: config.endDate || '',
+  onChange: config.onChange || (() => {}),
+  change() { this.onChange(); },
+}));
+
+Alpine.data('periodNav', (config) => ({
+  label: config.label || '',
+  onPrev: config.onPrev || (() => {}),
+  onNext: config.onNext || (() => {}),
+}));
+
+Alpine.data('sportBreakdown', (config) => ({
+  items: config.items || [],
+  totalDist: (config.items || []).reduce((s, i) => s + (i.distance_meters || 0), 0),
+  barWidth(dist) { return this.totalDist > 0 ? (dist / this.totalDist * 100).toFixed(0) : 0; },
+  barColor(sport) {
+    const colors = { run: '#1565c0', ride: '#2e7d32', swim: '#00838f', hike: '#e65100' };
+    return colors[sport] || '#7b1fa2';
+  },
+}));
+
+Alpine.data('activityTable', (config) => ({
+  get items() { return config.activities || []; },
+  title: config.title || '',
+  showTime: config.showTime || false,
+  compact: config.compact || false,
+  emptyMsg: config.emptyMsg || 'No activities yet.',
+  onRowClick: config.onRowClick || null,
+
+  sportIcon(sport) {
+    const icons = {
+      run: '\u{1F3C3}',
+      ride: '\u{1F6B2}',
+      cycling: '\u{1F6B2}',
+      swim: '\u{1F3CA}',
+      hike: '\u{1F6B6}',
+      walk: '\u{1F6B6}',
+      other: '\u{1F3CB}\uFE0F',
+    };
+    return icons[sport] || icons.other;
+  },
+
+  speed(s) {
+    if (!s || s.avg_speed == null) return '\u2014';
+    const v = s.avg_speed;
+    if (s.sport_type === 'run' || s.sport_type === 'hike' || s.sport_type === 'walk') {
+      const minPerKm = 1000 / v / 60;
+      const min = Math.floor(minPerKm);
+      const sec = Math.round((minPerKm - min) * 60);
+      return min + ':' + String(sec).padStart(2, '0') + ' /km';
+    }
+    return (v * 3.6).toFixed(1) + ' km/h';
+  },
+
+  rowClick(a) { if (this.onRowClick) this.onRowClick(a.id); },
+}));
+
+Alpine.data('lineChart', (config) => ({
+  labels: config.labels || [],
+  dataset: config.dataset || [],
+  color: config.color || '#1a1a2e',
+  fill: config.fill !== undefined ? config.fill : true,
+  height: config.height || 200,
+  pointRadius: config.pointRadius || 0,
+  yLabel: config.yLabel || '',
+  customOptions: config.options || {},
+  customPlugins: config.plugins || [],
+  _chart: null,
+  _onHover: config.onHover || null,
+  _onLeave: config.onLeave || null,
+
+  init() {
+    this.$nextTick(() => this._render());
+  },
+
+  destroy() {
+    if (this._chart) { this._chart.destroy(); this._chart = null; }
+  },
+
+  _render() {
+    const el = this.$refs.canvas;
+    if (!el || !this.labels.length) return;
+    el.style.height = this.height + 'px';
+    el.height = this.height;
+    if (this._chart) { this._chart.destroy(); }
+    this._chart = new Chart(el.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: this.labels,
+        datasets: [{
+          data: this.dataset,
+          fill: this.fill,
+          borderColor: this.color,
+          backgroundColor: this.color + '18',
+          tension: 0.3,
+          pointRadius: this.pointRadius,
+          pointBackgroundColor: this.color,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false },
+        },
+        scales: {
+          x: this.yLabel ? {
+            title: { display: true, text: this.yLabel, font: { size: 10 } },
+            ticks: { font: { size: 9 } },
+          } : { display: false },
+          y: {
+            display: true,
+            ticks: { font: { size: 9 }, maxTicksLimit: 4 },
+            grid: { color: 'rgba(0,0,0,0.06)' },
+          }
+        },
+        interaction: { intersect: false, mode: 'index' },
+        onHover: this._onHover
+          ? (event, elements) => {
+              if (elements.length > 0) this._onHover(elements[0].index);
+              else if (this._onLeave) this._onLeave();
+            }
+          : undefined,
+        ...this.customOptions,
+      },
+      plugins: this.customPlugins,
+    });
+  },
+}));
+
+Alpine.data('routeChartPanel', (config) => ({
+  polyline: config.polyline || null,
+  elevationProfile: config.elevationProfile || null,
+  timeSeries: config.timeSeries || null,
+  _map: null,
+  _series: null,
+  _charts: [],
+  hoverIndex: null,
+  hoveredPoint: null,
+
+  get tooltipText() {
+    if (!this.hoveredPoint) return '';
+    const p = this.hoveredPoint;
+    const parts = [`${p.d.toFixed(0)}m`];
+    if (p.ele != null) parts.push(`\u2191${p.ele.toFixed(0)}m`);
+    if (p.spd != null) parts.push(`${p.spd.toFixed(1)}m/s`);
+    if (p.hr != null) parts.push(`\u2665${p.hr}`);
+    return parts.join(' | ');
+  },
+
+  get elevLabels() { return this._series ? this._series.map(p => p.d.toFixed(0)) : []; },
+  get elevData() { return this._series ? this._series.map(p => p.ele) : []; },
+  get spdData() { return this._series && this._series[0]?.spd != null ? this._series.map(p => p.spd) : null; },
+  get hrData() { return this._series && this._series[0]?.hr != null ? this._series.map(p => p.hr) : null; },
+  get hasSpd() { return this.spdData !== null; },
+  get hasHr() { return this.hrData !== null; },
+
+  init() {
+    if (this.timeSeries) {
+      try { this._series = JSON.parse(this.timeSeries); } catch(e) {}
+    }
+    if (!this._series && this.elevationProfile) {
+      try {
+        const elev = JSON.parse(this.elevationProfile);
+        this._series = elev.map((d, i) => ({ d: d[0], ele: d[1] }));
+      } catch(e) {}
+    }
+    this.$nextTick(() => { this._renderMap(); });
+  },
+
+  destroy() {
+    if (this._map) { this._map.remove(); this._map = null; }
+  },
+
+  _renderMap() {
+    const el = this.$refs.mapEl;
+    if (!el || !this.polyline) return;
+    try {
+      const coords = L.Polyline.decode(this.polyline);
+      this._map = L.map(el, { zoomControl: true, scrollWheelZoom: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '&copy; OpenStreetMap'
+      }).addTo(this._map);
+      const poly = L.polyline(coords, { color: '#1a1a2e', weight: 3 }).addTo(this._map);
+      this._map.fitBounds(poly.getBounds().pad(0.1));
+    } catch (e) { console.error('Map error:', e); }
+  },
+
+  _setHover(index) {
+    this.hoverIndex = index;
+    this.hoveredPoint = this._series ? this._series[index] : null;
+    if (this._map && this._map._marker) {
+      this._map._marker.remove();
+      this._map._marker = null;
+    }
+    if (this._map && this.hoveredPoint) {
+      this._map._marker = L.circleMarker([this.hoveredPoint.lat, this.hoveredPoint.lng], {
+        radius: 5, color: '#e63946', fillColor: '#e63946', fillOpacity: 1
+      }).addTo(this._map);
+    }
+  },
+}));
+
+function app() {
+  return {
+    view: 'list',
+    loading: false,
+    activities: [],
+    detail: null,
+    page: 1, totalPages: 1, pageSize: 20,
+    filter: { sport: '', startDate: '', endDate: '' },
+    editMode: false, editForm: {},
+    uploadResult: null, uploadError: null, uploading: false, dragover: false,
+    form: { name:'', sport_type:'run', start_time:'', distance_km:'', duration_min:'',
+            elevation_gain:'', calories:'', avg_hr:'', max_hr:'', perceived_exertion:'', description:'' },
+    saving: false, formError: null,
+    gearItems: [], gearLoading: false, showAddGear: false, editingGear: null,
+    gearForm: { name:'', gear_type:'bike', brand:'', model:'', nickname:'', maintenance_interval_km:'' },
+    eddingtonData: null, eddingtonLoading: false,
+    heatmapInitialized: false,
+    dashboard: null, dashboardLoading: false,
+    monthlyData: null, monthlyLoading: false, monthlyYear: 0, monthlyMonth: 0, selectedDay: null,
+
+    init() { this.loadDashboard(); },
+
+    async api(path, opts = {}) {
+      const r = await fetch(path, {
+        headers: { 'Content-Type': 'application/json', ...opts.headers }, ...opts
+      });
+      if (!r.ok) { const e = await r.json().catch(()=>{}); throw new Error(e?.detail || r.statusText); }
+      return r.status === 204 ? null : r.json();
+    },
+
+    async loadDashboard() {
+      this.dashboardLoading = true;
+      try { this.dashboard = await this.api('/api/activities/dashboard'); } catch(e) { console.error(e); }
+      this.dashboardLoading = false;
+    },
+
+    async loadMonthly(y, m) {
+      this.monthlyYear = y; this.monthlyMonth = m; this.selectedDay = null;
+      this.monthlyLoading = true;
+      try { this.monthlyData = await this.api(`/api/activities/monthly?year=${y}&month=${m}`); } catch(e) { console.error(e); }
+      this.monthlyLoading = false;
+    },
+
+    navMonth(delta) {
+      let m = this.monthlyMonth + delta;
+      let y = this.monthlyYear;
+      if (m < 1) { m = 12; y--; }
+      if (m > 12) { m = 1; y++; }
+      this.loadMonthly(y, m);
+    },
+
+    selectDay(d) { this.selectedDay = this.selectedDay === d ? null : d; },
+
+    get calendarSlots() {
+      const slots = [];
+      if (!this.monthlyData) return slots;
+      const first = new Date(this.monthlyYear, this.monthlyMonth - 1, 1);
+      const daysInMonth = new Date(this.monthlyYear, this.monthlyMonth, 0).getDate();
+      const startDow = (first.getDay() + 6) % 7;
+      for (let i = 0; i < startDow; i++) slots.push({ key: 'pad-' + i, day: null });
+      for (let d = 1; d <= daysInMonth; d++) slots.push({ key: 'day-' + d, day: String(d) });
+      return slots;
+    },
+
+    get monthlyLabel() {
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return months[this.monthlyMonth - 1] + ' ' + this.monthlyYear;
+    },
+
+    async loadList(p) {
+      this.loading = true; this.page = p;
+      const params = new URLSearchParams({ page: p, page_size: this.pageSize });
+      if (this.filter.sport) params.set('sport_type', this.filter.sport);
+      if (this.filter.startDate) params.set('start_date', this.filter.startDate);
+      if (this.filter.endDate) params.set('end_date', this.filter.endDate);
+      try {
+        const data = await this.api('/api/activities?' + params.toString());
+        this.activities = data.items;
+        this.totalPages = Math.max(1, Math.ceil(data.total / this.pageSize));
+      } catch (e) { console.error(e); this.activities = []; }
+      this.loading = false;
+    },
+
+    async showDetail(id) {
+      this.view = 'detail'; this.loading = true; this.editMode = false;
+      try { this.detail = await this.api(`/api/activities/${id}`); } catch (e) { console.error(e); }
+      this.loading = false;
+    },
+
+    deleteActivity(id) { if (!confirm('Delete this activity?')) return; this.api(`/api/activities/${id}`, { method:'DELETE' }); this.view='list'; this.loadList(1); },
+
+    saveEdit() {
+      const body = {};
+      for (const k of ['name','description','perceived_exertion']) {
+        if (this.editForm[k] !== this.detail[k]) body[k] = this.editForm[k];
+      }
+      this.api(`/api/activities/${this.detail.id}`, { method:'PUT', body:JSON.stringify(body) }).then(d => { this.detail = d; this.editMode = false; });
+    },
+
+    pickFile() { this.$nextTick(() => { const el = this.$refs?.fileInput; if (el) el.click(); }); },
+
+    handleFile(file) {
+      if (!file || !file.name.toLowerCase().endsWith('.gpx')) { this.uploadError = 'Only .gpx files supported'; return; }
+      this.uploadError = null; this.uploadResult = null; this.uploading = true;
+      const fd = new FormData(); fd.append('file', file);
+      fetch('/api/activities/upload', { method:'POST', body:fd })
+        .then(r => { if (!r.ok) throw new Error('Upload failed'); return r.json(); })
+        .then(d => { this.uploadResult = d; this.uploading = false; })
+        .catch(e => { this.uploadError = e.message; this.uploading = false; });
+    },
+
+    async createActivity() {
+      this.saving = true; this.formError = null;
+      try {
+        const body = {
+          name: this.form.name || 'Untitled', sport_type: this.form.sport_type,
+          start_time: this.form.start_time ? new Date(this.form.start_time).toISOString() : new Date().toISOString(),
+          distance_meters: this.form.distance_km ? parseFloat(this.form.distance_km)*1000 : null,
+          duration_seconds: this.form.duration_min ? parseFloat(this.form.duration_min)*60 : null,
+          elevation_gain_meters: this.form.elevation_gain ? parseFloat(this.form.elevation_gain) : null,
+          calories: this.form.calories ? parseInt(this.form.calories) : null,
+          avg_heartrate: this.form.avg_hr ? parseFloat(this.form.avg_hr) : null,
+          max_heartrate: this.form.max_hr ? parseFloat(this.form.max_hr) : null,
+          perceived_exertion: this.form.perceived_exertion ? parseInt(this.form.perceived_exertion) : null,
+          description: this.form.description || null,
+        };
+        const activity = await this.api('/api/activities', { method:'POST', body:JSON.stringify(body) });
+        this.showDetail(activity.id);
+      } catch (e) { this.formError = e.message; }
+      this.saving = false;
+    },
+
+    async initGear() { this.gearLoading = true; try { this.gearItems = await this.api('/api/gear'); } catch(e){} this.gearLoading = false; },
+    editGear(g) { this.editingGear = g; this.gearForm = { name:g.name, gear_type:g.gear_type, brand:g.brand||'', model:g.model||'', nickname:g.nickname||'', maintenance_interval_km:g.maintenance_interval_km||'' }; },
+    async saveGear() {
+      const body = { name:this.gearForm.name, gear_type:this.gearForm.gear_type, brand:this.gearForm.brand||null, model:this.gearForm.model||null, nickname:this.gearForm.nickname||null, maintenance_interval_km:this.gearForm.maintenance_interval_km ? parseFloat(this.gearForm.maintenance_interval_km) : null };
+      if (this.editingGear) { await this.api(`/api/gear/${this.editingGear.id}`, { method:'PUT', body:JSON.stringify(body) }); }
+      else { await this.api('/api/gear', { method:'POST', body:JSON.stringify(body) }); }
+      this.showAddGear = false; this.editingGear = null; this.initGear();
+    },
+    async deleteGear(id) { if (!confirm('Delete this gear?')) return; await this.api(`/api/gear/${id}`, { method:'DELETE' }); this.initGear(); },
+
+    async loadEddington() {
+      this.eddingtonLoading = true;
+      try { this.eddingtonData = await this.api('/api/activities/eddington'); } catch(e){}
+      this.eddingtonLoading = false;
+    },
+
+    async initHeatmap() {
+      if (this.heatmapInitialized) return;
+      this.heatmapInitialized = true;
+      this.$nextTick(async () => {
+        try {
+          const data = await this.api('/api/activities/heatmap');
+          const points = [];
+          for (const p of data.polylines) {
+            for (const [lat, lng] of p.coords) { points.push([lat, lng, 0.6]); }
+          }
+          const map = L.map('heatmap-container', { zoomControl: true, scrollWheelZoom: true });
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, attribution: '&copy; OpenStreetMap'
+          }).addTo(map);
+          if (points.length > 0) {
+            L.heatLayer(points, { radius: 15, blur: 10, maxZoom: 17 }).addTo(map);
+            map.fitBounds([[Math.min(...points.map(p=>p[0])), Math.min(...points.map(p=>p[1]))],
+                          [Math.max(...points.map(p=>p[0])), Math.max(...points.map(p=>p[1]))]]);
+          } else {
+            map.setView([40, -100], 4);
+          }
+        } catch(e) { console.error('Heatmap error:', e); }
+      });
+    },
+
+    fmtDist(m) { if (!m) return '—'; return m >= 1000 ? (m/1000).toFixed(1)+' km' : m.toFixed(0)+' m'; },
+    fmtDur(s) { if (!s) return '—'; const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); return h>0 ? h+'h '+m+'m' : m+'m'; },
+    fmtElev(m) { if (!m) return '—'; return m.toFixed(0)+' m'; },
+    fmtPace(s, m) {
+      if (!s||!m) return '—';
+      const minPerKm = (s/60)/(m/1000);
+      const min = Math.floor(minPerKm);
+      const sec = Math.round((minPerKm-min)*60);
+      return min+':'+sec.toString().padStart(2,'0')+' /km';
+    },
+  }
+}
+</script>
+</body>
+</html>
