@@ -1,14 +1,7 @@
-```
-_________ _______  _______  _______  _______ 
-\__   __/(  ____ )(  ___  )(  ____ \(  ____ \
-   ) (   | (    )|| (   ) || (    \/| (    \/
-   | |   | (____)|| (___) || |      | (__    
-   | |   |     __)|  ___  || |      |  __)   
-   | |   | (\ (   | (   ) || |      | (      
-   | |   | ) \ \__| )   ( || (____/\| (____/\
-   )_(   |/   \__/|/     \|(_______/(_______/
-                                             
-```
+<p align="center">
+  <img src="frontend/public/favicon.svg" width="80" alt="Trace logo" style="vertical-align: middle"/>
+  <span style="font-size:2.5em; font-weight:700; margin-left:12px; vertical-align: middle; color:#185FA5">Trace</span>
+</p>
 
 **Self-hosted activity tracking and training planning platform.**
 
