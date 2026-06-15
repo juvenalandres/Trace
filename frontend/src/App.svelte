@@ -9,6 +9,7 @@
   import ActivityDetail from './pages/ActivityDetail.svelte';
   import Gear from './pages/Gear.svelte';
   import Segments from './pages/Segments.svelte';
+  import SegmentDetail from './pages/SegmentDetail.svelte';
   import MonthlyStats from './pages/MonthlyStats.svelte';
   import Eddington from './pages/Eddington.svelte';
   import Heatmap from './pages/Heatmap.svelte';
@@ -22,11 +23,12 @@
   import RoutePlanner from './pages/RoutePlanner.svelte';
   import { onMount } from 'svelte';
 
-  type Page = 'dashboard' | 'activities' | 'activity' | 'gear' | 'segments' | 'monthly' | 'eddingtong' | 'heatmap' | 'statistics' | 'milestones' | 'upload' | 'profile' | 'training-plans' | 'training-calendar' | 'training-insights' | 'route-planner';
+  type Page = 'dashboard' | 'activities' | 'activity' | 'gear' | 'segments' | 'segment-detail' | 'monthly' | 'eddingtong' | 'heatmap' | 'statistics' | 'milestones' | 'upload' | 'profile' | 'training-plans' | 'training-calendar' | 'training-insights' | 'route-planner';
 
   let loggedIn = $state(isLoggedIn());
   let currentPage = $state<Page>('dashboard');
   let activityId = $state<number | null>(null);
+  let segmentId = $state<number | null>(null);
   let collapsed = $state(false);
   let mobileMenuOpen = $state(false);
   let user = $state<User | null>(null);
@@ -55,7 +57,8 @@
 
   function navigate(page: Page, id?: number) {
     currentPage = page;
-    if (id !== undefined) activityId = id;
+    if (page === 'activity' && id !== undefined) activityId = id;
+    if (page === 'segment-detail' && id !== undefined) segmentId = id;
     mobileMenuOpen = false;
   }
 
@@ -230,7 +233,12 @@
         {:else if currentPage === 'gear'}
           <Gear />
         {:else if currentPage === 'segments'}
-          <Segments />
+          <Segments onNavigate={(page, id) => navigate(page as Page, id)} />
+        {:else if currentPage === 'segment-detail' && segmentId !== null}
+          <SegmentDetail
+            segmentId={segmentId}
+            onBack={() => navigate('segments')}
+          />
         {:else if currentPage === 'monthly'}
           <MonthlyStats onNavigate={(page, id) => navigate(page as Page, id)} />
         {:else if currentPage === 'eddingtong'}

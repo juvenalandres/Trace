@@ -22,7 +22,7 @@ Upload GPX/FIT files or log activities manually. Visualize volume, pace, elevati
 - **Training plans** -- calendar-based planning with structured session targets (distance, duration, pace, HR, RPE)
 - **Eddington number** -- SQL-computed E-number with distribution chart and qualifying rides/runs
 - **Year-in-review** -- monthly breakdown, PRs, favorite month/sport
-- **Segments** -- user-defined route segments with PR tracking, leaderboard, auto-matching on new uploads, and manual back-match for existing activities; inline creation modal with elevation profile chart
+- **Segments** -- user-defined route segments with PR tracking, leaderboard, auto-matching on new uploads, and manual back-match for existing activities; inline creation modal with elevation profile chart; dedicated detail page with interactive map, elevation profile with synced cursor, PR card, leaderboard, and paginated effort history
 - **Route planner** -- interactive map-based route builder with road snapping and elevation profiles
 - **Admin** -- first user is admin by default; admin can manage other users' roles
 - **Auth** -- JWT with refresh token rotation and httpOnly cookies

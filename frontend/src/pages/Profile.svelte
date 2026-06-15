@@ -118,7 +118,7 @@
 
   function valuesToPayload(values: number[]) {
     return {
-      zone_1_min: undefined,
+      zone_1_min: values[0] ?? undefined,
       zone_1_max: values[1] || undefined,
       zone_2_min: values[2] || undefined,
       zone_2_max: values[3] || undefined,
@@ -127,7 +127,7 @@
       zone_4_min: values[6] || undefined,
       zone_4_max: values[7] || undefined,
       zone_5_min: values[8] || undefined,
-      zone_5_max: undefined,
+      zone_5_max: values[9] ?? undefined,
     };
   }
 

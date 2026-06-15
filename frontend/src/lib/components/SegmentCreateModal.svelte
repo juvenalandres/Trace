@@ -36,6 +36,31 @@
   let mouseX = 0;
   let mouseY = 0;
   let tooltipData: { dists: Float64Array; eles: Float64Array; slopes: number[] } | null = null;
+  let segmentCoords = $state<[number, number][]>([]);
+
+  function encodePolyline(coords: [number, number][]): string {
+    let str = '';
+    let prevLat = 0, prevLng = 0;
+    for (const [lat, lng] of coords) {
+      const latE5 = Math.round(lat * 1e5);
+      const lngE5 = Math.round(lng * 1e5);
+      const dLat = latE5 - prevLat;
+      const dLng = lngE5 - prevLng;
+      prevLat = latE5;
+      prevLng = lngE5;
+      for (const v of [dLat, dLng]) {
+        const shifted = v << 1;
+        const bits = v < 0 ? ~shifted : shifted;
+        let chunk = bits & 0x1f;
+        for (let remaining = bits >>> 5; remaining > 0; remaining >>>= 5) {
+          str += String.fromCharCode((chunk | 0x20) + 63);
+          chunk = remaining & 0x1f;
+        }
+        str += String.fromCharCode(chunk + 63);
+      }
+    }
+    return str;
+  }
 
   function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 6371000;
@@ -62,6 +87,7 @@
     startCoord = null;
     endCoord = null;
     distance = null;
+    segmentCoords = [];
   }
 
   async function handleSubmit() {
@@ -78,7 +104,9 @@
         start_lng: startCoord[1],
         end_lat: endCoord[0],
         end_lng: endCoord[1],
+        polyline: segmentCoords.length >= 2 ? encodePolyline(segmentCoords) : undefined,
         distance_m: distance ?? undefined,
+        elevation_gain_m: elevationGain ?? undefined,
       });
       onCreated?.();
       onClose();
@@ -120,7 +148,7 @@
     end: [number, number],
     polylineStr: string,
     profileStr: string,
-  ): { dists: Float64Array; eles: Float64Array; gain: number } | null {
+  ): { dists: Float64Array; eles: Float64Array; gain: number; coords: [number, number][] } | null {
     const coords = decodePolyline(polylineStr);
     if (coords.length < 2) return null;
 
@@ -154,6 +182,7 @@
       dists: new Float64Array(seg.map(p => +(p.d / 1000).toFixed(3))),
       eles: new Float64Array(seg.map(p => p.ele)),
       gain,
+      coords: coords.slice(lo, hi + 1),
     };
   }
 
@@ -201,6 +230,7 @@
         eles: new Float64Array(resp.elevation_profile.map(p => p.elevation)),
       };
       elevationGain = resp.elevation_gain_m;
+      segmentCoords = segCoords;
     } catch (e: unknown) {
       elevationError = e instanceof Error ? e.message : 'Failed to load elevation';
     } finally {
@@ -217,6 +247,7 @@
       elevationGain = null;
       elevationLoading = false;
       elevationError = '';
+      segmentCoords = [];
       return;
     }
 
@@ -227,6 +258,7 @@
       const result = computeActivityElevation(start, end, activity.stats.polyline, activity.stats.elevation_profile);
       elevationChartData = result ? { dists: result.dists, eles: result.eles } : null;
       elevationGain = result?.gain ?? null;
+      segmentCoords = result?.coords ?? [];
       return;
     }
 

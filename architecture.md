@@ -493,7 +493,7 @@
                   │      avg speed, avg HR, avg power)           │
                   │                                                │
                   │  Back-match old activities (manual):          │
-                  │  Segment detail panel → "Match Activities"  │
+                  │  Segment detail page → "Match Activities"   │
                   │  button → POST /api/segments/{id}/match    │
                   │  → match_activities_for_segment() reparses │
                   │  raw GPX/FIT files of most recent 500      │
@@ -511,6 +511,13 @@
                   │     → modal opens showing ALL routes as       │
                   │     thin overlay lines on the map             │
                   │     → pick start/end points on any route      │
+                  │                                                │
+                  │  Segment detail page:                         │
+                  │  Full-page view (replaces old sidebar)        │
+                  │  → RouteChartPanel with segment polyline     │
+                  │  → Elevation fetched via routeApi.elevation │
+                  │  → PR card, leaderboard, paginated efforts  │
+                  │  → Edit, delete, match actions in top bar   │
                   │                                                │
                   │  SegmentPickerMap (self-contained Leaflet)    │
                   │  Click start + end points, auto-distance      │
