@@ -58,8 +58,8 @@
     loading = true;
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const dateFrom = firstDay.toISOString().slice(0, 10);
-    const dateTo = lastDay.toISOString().slice(0, 10);
+    const dateFrom = firstDay.toLocaleDateString('en-CA');
+    const dateTo = lastDay.toLocaleDateString('en-CA');
 
     try {
       const res = await activitiesApi.list(1, 500, { date_from: dateFrom, date_to: dateTo });
@@ -161,7 +161,7 @@
   }
 
   function makeCell(date: Date, isCurrentMonth: boolean): DayCell {
-    const dateStr = date.toISOString().slice(0, 10);
+    const dateStr = date.toLocaleDateString('en-CA');
     const dayActs = activities.filter(a => a.start_time.slice(0, 10) === dateStr);
     const isToday = date.toDateString() === today.toDateString();
     return {

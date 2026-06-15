@@ -23,10 +23,15 @@
 │  │  rotation  │  │  /api/gear/stats   │  │                      │  │
 │  │  httpOnly  │  │  /api/gear/:id/svc │  │                      │  │
 │  │  cookie    │  │  /api/routes       │  │                      │  │
+│  │            │  │  /api/segments     │  │                      │  │
+│  │            │  │  /api/segments/:id/│  │                      │  │
+│  │            │  │  match (manual     │  │                      │  │
+│  │            │  │  back-fill)        │  │                      │  │
 │  │            │  │  /api/stats        │  │                      │  │
 │  │            │  │  /api/stats/heatmap│  │                      │  │
 │  │            │  │  /api/stats/years  │  │                      │  │
 │  │            │  │  /api/training/*   │  │                      │  │
+│  │            │  │  /api/users        │  │                      │  │
 │  └────────────┘  └────────┬───────────┘  └──────────────────────┘  │
 │                           │  uses                                  │
 │                  ┌────────▼───────────┐                            │
@@ -35,6 +40,8 @@
 │                  │  StatsEngine       │  aggregation queries      │
 │                  │  ActivityProcessor │  GPX parse + compute      │
 │                  │  EddingtonService  │  E-number computation     │
+│                  │  SegmentMatcher    │  Auto-match efforts on    │
+│                  │                    │  activity upload          │
 │                  │  TrainingLoad      │  TRIMP, CTL/ATL/TSB,     │
 │                  │                    │  ACWR computation         │
 │                  │  TTLCache          │  in-memory LRU cache      │
@@ -68,9 +75,9 @@
 │  │                                                                │    │
 │  │  Tables:                 Key columns:                          │    │
 │  │  ──────────              ────────────────────────────────      │    │
-│  │  users                   email, name, preferred_units,         │    │
+  │  │  users                   email, name, preferred_units,         │    │
 │  │                           weight_kg, ftp_watts, max_hr,        │    │
-│  │                           resting_hr, created_at               │    │
+│  │                           resting_hr, is_admin, created_at   │    │
 │  │                                                                │    │
 │  │  activities              user_id (FK), name, sport_type        │    │
 │  │                           (enum: run/ride/swim/hike/walk/      │    │
@@ -153,6 +160,18 @@
 │  │                           (JSON — array of {distance, elev}),  │    │
 │  │                           sport_type (nullable), created_at    │    │
 │  │                                                                │    │
+│  │  segments                 user_id (FK), name, description,     │    │
+│  │                           sport_type (nullable), start_lat,    │    │
+│  │                           start_lng, end_lat, end_lng,         │    │
+│  │                           polyline (encoded), distance_m,      │    │
+│  │                           elevation_gain_m, created_at         │    │
+│  │                                                                │    │
+│  │  segment_efforts          segment_id (FK), activity_id (FK),   │    │
+│  │                           user_id (FK), elapsed_time_s,        │    │
+│  │                           avg_speed, avg_hr, avg_power,        │    │
+│  │                           start_time, created_at               │    │
+│  │                           Unique on (segment_id, activity_id)  │    │
+│  │                                                                │    │
 │  │  Indexes:                                                      │    │
 │  │  ────────                                                      │    │
 │  │  activities(user_id, start_time) — dashboard time-range        │    │
@@ -160,6 +179,10 @@
 │  │  activity_stats(training_load) — sport load distribution       │    │
 │  │  training_sessions(plan_id, scheduled_date) — calendar         │    │
 │  │  daily_training_load(user_id, date) — unique constraint        │    │
+│  │  segments(user_id) — user's segments                           │    │
+│  │  segment_efforts(segment_id) — segment history                 │    │
+│  │  segment_efforts(activity_id) — activity efforts               │    │
+│  │  segment_efforts(user_id) — user's efforts                     │    │
 │  │                                                                │    │
 │  │  Date helpers: _year_expr, _year_month_expr, _date_expr,       │    │
 │  │  _week_start_expr for SQL date arithmetic across queries       │    │
@@ -455,9 +478,53 @@
                 │    latitude=...&longitude=...               │
                 │  → elevation profile + gain/loss            │
                 │  Frontend: draw polyline + uPlot chart      │
-                │  Save → POST /api/routes → DB               │
-                │  Export → generate GPX from waypoints       │
-                └──────────────────────────────────────────────┘
+                 │  Save → POST /api/routes → DB               │
+                 │  Export → generate GPX from waypoints       │
+                 │                                              │
+                  │  Segments (v2):                              │
+                  │  Bidirectional matching:                     │
+                  │                                                │
+                  │  New activity → scan all segments:           │
+                  │  Activity upload → ActivityProcessor         │
+                  │  → SegmentMatcher checks all segments      │
+                  │    (haversine distance, 50m tolerance)       │
+                  │  → If activity passes start + end points   │
+                  │    → create SegmentEffort (elapsed time,   │
+                  │      avg speed, avg HR, avg power)           │
+                  │                                                │
+                  │  Back-match old activities (manual):          │
+                  │  Segment detail panel → "Match Activities"  │
+                  │  button → POST /api/segments/{id}/match    │
+                  │  → match_activities_for_segment() reparses │
+                  │  raw GPX/FIT files of most recent 500      │
+                  │  activities matching sport_type → runs     │
+                  │  same haversine check → creates efforts   │
+                  │                                                │
+                  │  Two creation modes:                          │
+                  │  1. From Activity Detail: Click "Create       │
+                  │     Segment" → modal opens inline showing     │
+                  │     the activity's single route on the map   │
+                  │     → pick start/end points → POST            │
+                  │  2. From Segments page: Click "Create         │
+                  │     Segment" → fetches all user's activity    │
+                  │     routes (GET /api/stats/activity-routes)  │
+                  │     → modal opens showing ALL routes as       │
+                  │     thin overlay lines on the map             │
+                  │     → pick start/end points on any route      │
+                  │                                                │
+                  │  SegmentPickerMap (self-contained Leaflet)    │
+                  │  Click start + end points, auto-distance      │
+                  │  → POST /api/segments                        │
+                  │  Uses onMount/onDestroy for reliable          │
+                  │  lifecycle (no bind:this + $effect)          │
+                 │                                              │
+                 │  Admin:                                      │
+                 │  First registration → is_admin=true          │
+                 │  Profile → /api/users (admin-only)           │
+                 │  → user list with role badges               │
+                 │  Toggle admin → PUT /api/users/{id}/admin   │
+                 │    (admin-only, cannot self-modify)         │
+                 └──────────────────────────────────────────────┘
 ```
 
 ## Data Processing Pipeline

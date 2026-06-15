@@ -36,6 +36,10 @@
   let hrExpanded = $state(false);
   let powerExpanded = $state(false);
 
+  let users = $state<User[]>([]);
+  let usersLoading = $state(false);
+  let usersError = $state('');
+
   function zoneToValues(zone: UserZone | null): number[] {
     if (!zone) return new Array(10).fill(0);
     return [
@@ -61,7 +65,32 @@
     }
   }
 
-  onMount(loadZones);
+  async function loadUsers() {
+    if (!user?.is_admin) return;
+    usersLoading = true;
+    try {
+      users = await userApi.list();
+    } catch (e: unknown) {
+      usersError = e instanceof Error ? e.message : 'Failed to load users';
+    } finally {
+      usersLoading = false;
+    }
+  }
+
+  async function toggleAdmin(targetUser: User) {
+    try {
+      await userApi.setAdmin(targetUser.id, !targetUser.is_admin);
+      targetUser.is_admin = !targetUser.is_admin;
+      users = [...users];
+    } catch (e: unknown) {
+      usersError = e instanceof Error ? e.message : 'Failed to update admin status';
+    }
+  }
+
+  onMount(() => {
+    loadZones();
+    loadUsers();
+  });
 
   async function save() {
     saving = true;
@@ -298,6 +327,44 @@
     </button>
   </div>
 
+  {#if user?.is_admin}
+    <div class="card">
+      <div class="card-header">
+        <Icon name="activity" size={20} />
+        <span>Admin — Users</span>
+      </div>
+      <div class="card-body">
+        {#if usersLoading}
+          <LoadingSpinner size="sm" />
+        {:else if usersError}
+          <ErrorBanner message={usersError} />
+        {:else}
+          <div class="users-list">
+            {#each users as u}
+              <div class="user-row">
+                <span class="user-email">{u.email}</span>
+                <span class="user-name">{u.name || '—'}</span>
+                <span class="user-badge" class:admin={u.is_admin}>
+                  {u.is_admin ? 'Admin' : 'User'}
+                </span>
+                {#if u.id !== user.id}
+                  <button
+                    class="btn btn-sm"
+                    class:btn-outline={u.is_admin}
+                    class:btn-primary={!u.is_admin}
+                    onclick={() => toggleAdmin(u)}
+                  >
+                    {u.is_admin ? 'Revoke admin' : 'Make admin'}
+                  </button>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
+
   <div class="card danger-zone">
     <div class="card-header">
       <Icon name="logout" size={20} />
@@ -499,6 +566,46 @@
     color: #16a34a;
     font-size: 14px;
     margin: 0;
+  }
+  .users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .user-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--bg);
+    border-radius: 8px;
+  }
+  .user-email {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    min-width: 180px;
+  }
+  .user-name {
+    font-size: 13px;
+    color: var(--text-secondary);
+    flex: 1;
+  }
+  .user-badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--border-light);
+    color: var(--text-secondary);
+  }
+  .user-badge.admin {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
   }
   @media (max-width: 768px) {
     .page { padding: 16px; }

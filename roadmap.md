@@ -417,13 +417,22 @@ gunzip -c ./backups/trace_YYYYMMDD_HHMMSS.sql.gz | docker compose exec -T db psq
 ## Phase 8 — Stretch Goals
 
 - [ ] Additional API sync providers (Fitbit, Wahoo, Polar)
-- [ ] **Segments** — user-defined route segments with PR tracking
+- [x] **Segments v2** — user-defined route segments with PR tracking (rebuilt from scratch)
   - **Model:** `segments` table (id, user_id, name, description, sport_type, start_lat, start_lng, end_lat, end_lng, polyline, distance_m, elevation_gain_m, created_at)
   - **Model:** `segment_efforts` table (id, segment_id, activity_id, user_id, elapsed_time_s, avg_speed, avg_hr, avg_power, start_time, created_at)
-  - **Backend:** CRUD API for segments; auto-match segment efforts on activity upload (detect if activity passes through segment start/end points); segment leaderboard (user's PRs)
-  - **Frontend:** Segments page (list with search/filter, segment detail with effort history chart, PR highlight); create segment from activity detail (select start/end points on map)
-  - **API:** `POST/GET/PUT/DELETE /api/segments`, `GET /api/segments/{id}/efforts`, `GET /api/segments/{id}/pr`
-- [ ] Segment efforts tracking (per-activity segment attempts)
+  - **Backend:** CRUD API for segments; new uploads scan all segments automatically; manual "Match Activities" button reparses recent raw files (500 limit) to back-fill efforts for old activities via `POST /api/segments/{id}/match`; segment leaderboard (user's PRs)
+  - **Frontend:** Segments page (list with search/filter, slide-out detail panel with PR card, leaderboard table, effort history)
+  - **Two creation modes:**
+    1. **From Activity Detail:** "Create Segment" button opens `SegmentCreateModal` inline (no navigation) showing the activity's single route on the map
+    2. **From Segments page:** "Create Segment" fetches all user's routes via `GET /api/stats/activity-routes` and opens the modal showing ALL routes as thin overlay lines — pick start/end on any route
+  - **Map component:** `SegmentPickerMap.svelte` — self-contained Leaflet component using `onMount`/`onDestroy` for reliable lifecycle (no `bind:this` + `$effect` inside modal snippets); accepts optional `routes: {polyline, color?}[]` prop for background route overlay; renders inside `SegmentCreateModal`
+  - **API:** `POST/GET/PUT/DELETE /api/segments`, `GET /api/segments/{id}/efforts`, `GET /api/segments/{id}/pr`, `GET /api/segments/{id}/leaderboard`, `DELETE /api/segments/{id}/efforts/{effort_id}`
+  - **Multi-user:** Any user can create segments; only creator or admin can delete; efforts visible across all users; leaderboard shows all users' best times
+  - **Security:** `is_admin` field on User; auth + authorization on all endpoints; only effort owner can delete efforts; unique constraint prevents duplicate efforts
+- [x] Segment efforts tracking (per-activity segment attempts)
+- [x] **Admin role management** — first registered user is admin by default; admin can promote/revoke admin status for other users
+  - Backend: `GET /api/users` (admin-only), `PUT /api/users/{id}/admin` (admin-only, cannot self-modify)
+  - Frontend: Profile page shows user list with role badges and toggle buttons (admin-only section)
 - [ ] Social features (follow users, activity feed, comments, kudos)
 - [x] **Route planner / route creation tool** — interactive map-based route builder with road/path snapping and elevation profiles
   - **Sidebar:** "Route Planner" entry under Training section (after Insights)

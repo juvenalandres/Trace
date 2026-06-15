@@ -37,25 +37,25 @@ services:
       timeout: 10s
       retries: 3
 
-  backup:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trace_password}
-      DB_HOST: db
-      DB_NAME: trace
-      DB_USER: trace
-      RETENTION_DAYS: 7
-    volumes:
-      - ./backups:/backups
-      - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
-    depends_on:
-      db:
-        condition: service_healthy
-    entrypoint: /bin/sh
-    command: >
-      -c "
-      echo '0 2 * * * /usr/local/bin/backup.sh >> /backups/backup.log 2>&1' > /tmp/crontab &&
-      echo 'Starting backup scheduler...' &&
-      crond -f -l 2
-      "
+  # backup:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trace_password}
+  #     DB_HOST: db
+  #     DB_NAME: trace
+  #     DB_USER: trace
+  #     RETENTION_DAYS: 7
+  #   volumes:
+  #     - ./backups:/backups
+  #     - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   entrypoint: /bin/sh
+  #   command: >
+  #     -c "
+  #     echo '0 2 * * * /usr/local/bin/backup.sh >> /backups/backup.log 2>&1' > /tmp/crontab &&
+  #     echo 'Starting backup scheduler...' &&
+  #     crond -f -l 2
+  #     "

@@ -11,6 +11,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorBanner from '$lib/components/ErrorBanner.svelte';
+  import SegmentCreateModal from '$lib/components/SegmentCreateModal.svelte';
 
   interface Props {
     activityId: number;
@@ -35,6 +36,7 @@
   let powerZone = $state<UserZone | null>(null);
   let gearList = $state<Gear[]>([]);
   let editGearId = $state<number | null>(null);
+  let showSegmentModal = $state(false);
 
   function zoneToRanges(zone: UserZone | null): { min: number; max: number }[] | undefined {
     if (!zone) return undefined;
@@ -158,6 +160,10 @@
     </button>
     {#if activity}
       <div class="actions">
+        <button class="btn btn-outline" onclick={() => showSegmentModal = true} title="Create a segment from this activity's route">
+          <Icon name="plus" size={16} />
+          Create Segment
+        </button>
         <button class="btn btn-outline" onclick={openEdit}>
           <Icon name="segments" size={16} />
           Edit
@@ -314,6 +320,13 @@
     </div>
   </div>
 </Modal>
+
+<SegmentCreateModal
+  open={showSegmentModal}
+  activity={activity}
+  onClose={() => showSegmentModal = false}
+  onCreated={() => showSegmentModal = false}
+/>
 
 <style>
   .activity-detail {

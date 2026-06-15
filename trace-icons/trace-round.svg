@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <circle cx="250" cy="250" r="250" fill="#185FA5"/>
+  <circle cx="250" cy="250" r="195" fill="#0C447C"/>
+  <clipPath id="inner-round">
+    <circle cx="250" cy="250" r="195"/>
+  </clipPath>
+  <g clip-path="url(#inner-round)">
+    <line x1="55" y1="320" x2="445" y2="320" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <line x1="55" y1="250" x2="445" y2="250" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <line x1="55" y1="180" x2="445" y2="180" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <line x1="180" y1="55" x2="180" y2="445" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <line x1="250" y1="55" x2="250" y2="445" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <line x1="320" y1="55" x2="320" y2="445" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <polyline
+      points="90,390 135,378 175,360 212,340 245,315 272,285 296,255 318,225 340,200 360,177 378,157 390,120"
+      fill="none" stroke="#E6F1FB" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="390" cy="120" r="18" fill="#E6F1FB"/>
+    <circle cx="390" cy="120" r="30" fill="none" stroke="#E6F1FB" stroke-width="4" opacity="0.35"/>
+  </g>
+</svg>

@@ -21,6 +21,7 @@ class UserResponse(BaseModel):
     preferred_units: str
     weight_kg: float | None = None
     ftp_watts: int | None = None
+    is_admin: bool = False
     max_hr: int | None = None
     resting_hr: int | None = None
     created_at: datetime.datetime

@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 50
     rate_limit_per_minute: int = 10
     allow_signup: bool = True
+    segment_match_radius_m: int = 50
+    segment_match_max: int = 5000
 
     model_config = {"env_prefix": "TRACE_", "env_file": ".env"}
 

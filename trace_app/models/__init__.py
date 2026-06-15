@@ -14,6 +14,8 @@ from trace_app.models.gear import Gear
 from trace_app.models.lap import Lap
 from trace_app.models.refresh_token import RefreshToken
 from trace_app.models.route import Route
+from trace_app.models.segment import Segment
+from trace_app.models.segment_effort import SegmentEffort
 from trace_app.models.sync_source import SyncSource
 from trace_app.models.training_plan import TrainingPlan
 from trace_app.models.training_session import TrainingSession
@@ -29,6 +31,8 @@ __all__ = [
     "Lap",
     "RefreshToken",
     "Route",
+    "Segment",
+    "SegmentEffort",
     "SessionStatus",
     "Source",
     "SportType",

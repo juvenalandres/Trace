@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy import Boolean, DateTime, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from trace_app.database import Base
@@ -16,6 +16,7 @@ class User(Base):
     preferred_units: Mapped[str] = mapped_column(String(20), default="metric")
     weight_kg: Mapped[float | None] = mapped_column(default=None)
     ftp_watts: Mapped[int | None] = mapped_column(Integer, default=None)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     max_hr: Mapped[int | None] = mapped_column(Integer, default=None)
     resting_hr: Mapped[int | None] = mapped_column(Integer, default=None)
     created_at: Mapped[datetime.datetime] = mapped_column(
@@ -32,4 +33,6 @@ class User(Base):
     training_plans: Mapped[list["TrainingPlan"]] = relationship(back_populates="user")  # noqa: F821
     daily_training_loads: Mapped[list["DailyTrainingLoad"]] = relationship(back_populates="user")  # noqa: F821
     routes: Mapped[list["Route"]] = relationship(back_populates="user")  # noqa: F821
+    segments: Mapped[list["Segment"]] = relationship(back_populates="user")  # noqa: F821
+    segment_efforts: Mapped[list["SegmentEffort"]] = relationship(back_populates="user")  # noqa: F821
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user")  # noqa: F821

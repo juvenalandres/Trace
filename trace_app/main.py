@@ -15,7 +15,7 @@ from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Uploa
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import Date, func, select
+from sqlalchemy import Date, func, literal_column, select
 from sqlalchemy.orm import selectinload
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -31,6 +31,8 @@ from trace_app.models import Activity, ActivityStats, Gear, Lap, Route, User, Us
 from trace_app.models.training_plan import TrainingPlan
 from trace_app.models.training_session import TrainingSession
 from trace_app.routers.auth import router as auth_router
+from trace_app.routers.segments import router as segments_router
+
 from trace_app.schemas.activity import (
     ActivityCreate,
     ActivityListResponse,
@@ -141,7 +143,7 @@ def _week_start_expr(col):
     """Return the Monday of the week for a datetime column — works for both SQLite and PostgreSQL."""
     if is_postgres:
         # PostgreSQL date_trunc('week') returns Sunday, so shift to Monday
-        return func.date_trunc("week", col + func.cast("1 day", Date)) - func.cast("1 day", Date)
+        return func.date_trunc("week", col + literal_column("INTERVAL '1 day'")) - literal_column("INTERVAL '1 day'")
     # SQLite: weekday 1 = Monday, '-7 days' backs up to the Monday of the current week
     return func.date(col, "weekday 1", "-7 days")
 
@@ -213,6 +215,7 @@ async def request_middleware(request: Request, call_next):
 
 
 app.include_router(auth_router)
+app.include_router(segments_router)
 
 
 @app.get("/api/health")
@@ -256,6 +259,41 @@ async def update_me(
     user.updated_at = datetime.datetime.now(datetime.timezone.utc)
     await db.commit()
     return user
+
+
+@app.get("/api/users", response_model=list[UserResponse])
+async def list_users(
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can list users")
+    result = await db.execute(select(User).order_by(User.created_at))
+    return result.scalars().all()
+
+
+@app.put("/api/users/{user_id}/admin", response_model=UserResponse)
+async def set_user_admin(
+    user_id: int,
+    is_admin: bool = Form(...),
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can manage user roles")
+    if current_user.id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot change your own admin status")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    target_user = result.scalar_one_or_none()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    target_user.is_admin = is_admin
+    target_user.updated_at = datetime.datetime.now(datetime.timezone.utc)
+    await db.commit()
+    await db.refresh(target_user)
+    return target_user
 
 
 @app.post("/api/zones", response_model=UserZoneResponse)
@@ -522,6 +560,13 @@ async def upload_activity(
         activity_date = activity.start_time.date()
         await update_daily_training_load(db, user, activity_date, session_load)
 
+    # Match segment efforts
+    if points and source != "manual":
+        from trace_app.services.segment_matcher import match_segments_for_activity
+        await match_segments_for_activity(
+            db, points, activity.id, user.id, sport_type, activity.start_time
+        )
+
     await db.commit()
     invalidate_user_stats(user.id)
 
@@ -568,7 +613,7 @@ async def upload_activity(
 @app.get("/api/activities", response_model=ActivityListResponse)
 async def list_activities(
     page: int = 1,
-    page_size: int = Query(20, le=100),
+    page_size: int = Query(20, le=500),
     sport_type: str | None = None,
     source: str | None = None,
     gear_id: int | None = None,
@@ -599,13 +644,15 @@ async def list_activities(
         query = query.where(Activity.gear_id == gear_id)
         count_query = count_query.where(Activity.gear_id == gear_id)
     if date_from:
-        from datetime import datetime as dt
-        query = query.where(Activity.start_time >= dt.fromisoformat(date_from))
-        count_query = count_query.where(Activity.start_time >= dt.fromisoformat(date_from))
+        from datetime import datetime as dt, timezone
+        start_dt = dt.fromisoformat(date_from).replace(tzinfo=timezone.utc)
+        query = query.where(Activity.start_time >= start_dt)
+        count_query = count_query.where(Activity.start_time >= start_dt)
     if date_to:
-        from datetime import datetime as dt
-        query = query.where(Activity.start_time <= dt.fromisoformat(date_to))
-        count_query = count_query.where(Activity.start_time <= dt.fromisoformat(date_to))
+        from datetime import datetime as dt, timezone, timedelta
+        end_dt = (dt.fromisoformat(date_to) + timedelta(days=1)).replace(tzinfo=timezone.utc)
+        query = query.where(Activity.start_time < end_dt)
+        count_query = count_query.where(Activity.start_time < end_dt)
 
     total = (await db.execute(count_query)).scalar() or 0
 
@@ -651,12 +698,13 @@ async def get_activity(
     db=Depends(get_db),
 ):
     result = await db.execute(
-        select(Activity).where(Activity.id == activity_id, Activity.user_id == user.id)
+        select(Activity)
+        .where(Activity.id == activity_id, Activity.user_id == user.id)
+        .options(selectinload(Activity.stats), selectinload(Activity.laps))
     )
     activity = result.scalar_one_or_none()
     if not activity:
         raise HTTPException(status_code=404, detail="Activity not found")
-    await db.refresh(activity, ["stats", "laps"])
     return activity
 
 
@@ -1344,8 +1392,6 @@ async def volume(
     }
     cache.set(cache_key, result)
     return result
-    cache.set(cache_key, result)
-    return result
 
 
 # ── Training Plans ──────────────────────────────────────────────────
@@ -1578,8 +1624,8 @@ async def training_insights(
             Activity.user_id == user.id,
             Activity.start_time >= start_dt,
         )
-        .group_by(_week_start_expr(Activity.start_time))
-        .order_by(_week_start_expr(Activity.start_time))
+        .group_by("week_start")
+        .order_by("week_start")
     )
     week_rows = (await db.execute(week_q)).all()
 
@@ -1597,8 +1643,8 @@ async def training_insights(
             ActivityStats.avg_speed.isnot(None),
             ActivityStats.avg_speed > 0,
         )
-        .group_by(_week_start_expr(Activity.start_time), Activity.sport_type)
-        .order_by(_week_start_expr(Activity.start_time))
+        .group_by("week_start", Activity.sport_type)
+        .order_by("week_start")
     )
     pace_rows = (await db.execute(pace_q)).all()
 

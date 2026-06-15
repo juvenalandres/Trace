@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from trace_app.config import settings
@@ -74,10 +74,15 @@ async def register(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    # First user is admin by default
+    user_count = await db.execute(select(func.count(User.id)))
+    is_first_user = user_count.scalar() == 0
+
     user = User(
         email=data.email,
         password_hash=hash_password(data.password),
         name=data.name,
+        is_admin=is_first_user,
     )
     db.add(user)
     await db.commit()

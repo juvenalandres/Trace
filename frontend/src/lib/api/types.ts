@@ -14,6 +14,7 @@ export interface User {
   ftp_watts: number | null;
   max_hr: number | null;
   resting_hr: number | null;
+  is_admin: boolean;
 }
 
 export interface ActivityStats {
@@ -317,6 +318,14 @@ export const userApi = {
 
   update: (data: Partial<{ name: string; preferred_units: string; weight_kg: number; ftp_watts: number; max_hr: number; resting_hr: number }>) =>
     api.put<User>('/me', data),
+
+  list: () => api.get<User[]>('/users'),
+
+  setAdmin: (id: number, is_admin: boolean) => {
+    const form = new FormData();
+    form.append('is_admin', String(is_admin));
+    return api.put<User>(`/users/${id}/admin`, form);
+  },
 };
 
 export const zonesApi = {
@@ -525,6 +534,103 @@ export interface RouteElevationResponse {
   elevation_loss_m: number;
 }
 
+export interface Segment {
+  id: number;
+  user_id: number;
+  creator_name: string | null;
+  name: string;
+  description: string | null;
+  sport_type: string | null;
+  start_lat: number;
+  start_lng: number;
+  end_lat: number;
+  end_lng: number;
+  polyline: string | null;
+  distance_m: number | null;
+  elevation_gain_m: number | null;
+  created_at: string;
+  best_time: number | null;
+  effort_count: number;
+}
+
+export interface SegmentListItem {
+  id: number;
+  name: string;
+  sport_type: string | null;
+  distance_m: number | null;
+  best_time: number | null;
+  effort_count: number;
+  creator_name: string | null;
+  created_at: string;
+}
+
+export interface SegmentEffort {
+  id: number;
+  segment_id: number;
+  activity_id: number;
+  user_id: number;
+  user_name: string | null;
+  activity_name: string | null;
+  activity_start_time: string | null;
+  elapsed_time_s: number;
+  avg_speed: number | null;
+  avg_hr: number | null;
+  avg_power: number | null;
+  start_time: string;
+  created_at: string;
+}
+
+export interface SegmentPR {
+  id: number | null;
+  elapsed_time_s: number | null;
+  avg_speed: number | null;
+  avg_hr: number | null;
+  avg_power: number | null;
+  start_time: string | null;
+  activity_id: number | null;
+}
+
+export interface SegmentLeaderboardEntry {
+  rank: number;
+  user_name: string | null;
+  elapsed_time_s: number;
+  avg_speed: number | null;
+  activity_id: number;
+  start_time: string;
+}
+
+export const segmentApi = {
+  list: (sportType?: string, search?: string) => {
+    const params = new URLSearchParams();
+    if (sportType) params.set('sport_type', sportType);
+    if (search) params.set('search', search);
+    return api.get<SegmentListItem[]>(`/segments?${params}`);
+  },
+
+  get: (id: number) => api.get<Segment>(`/segments/${id}`),
+
+  create: (data: { name: string; description?: string; sport_type?: string; start_lat: number; start_lng: number; end_lat: number; end_lng: number; polyline?: string; distance_m?: number; elevation_gain_m?: number }) =>
+    api.post<Segment>('/segments', data),
+
+  update: (id: number, data: Partial<{ name: string; description: string; sport_type: string }>) =>
+    api.put<Segment>(`/segments/${id}`, data),
+
+  delete: (id: number) => api.del(`/segments/${id}`),
+
+  efforts: (segmentId: number) => api.get<SegmentEffort[]>(`/segments/${segmentId}/efforts`),
+
+  pr: (segmentId: number) => api.get<SegmentPR>(`/segments/${segmentId}/pr`),
+
+  leaderboard: (segmentId: number, limit: number = 10) =>
+    api.get<SegmentLeaderboardEntry[]>(`/segments/${segmentId}/leaderboard?limit=${limit}`),
+
+  deleteEffort: (segmentId: number, effortId: number) =>
+    api.del(`/segments/${segmentId}/efforts/${effortId}`),
+
+  matchActivities: (segmentId: number) =>
+    api.post<{ matched: number; segment_id: number }>(`/segments/${segmentId}/match`),
+};
+
 export const routeApi = {
   list: () => api.get<Route[]>('/routes'),
 
@@ -544,3 +650,4 @@ export const routeApi = {
   elevation: (points: Waypoint[]) =>
     api.post<RouteElevationResponse>('/routes/elevation', { points }),
 };
+

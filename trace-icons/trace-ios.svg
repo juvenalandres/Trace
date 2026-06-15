@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <rect x="0" y="0" width="500" height="500" rx="110" fill="#185FA5"/>
+  <rect x="60" y="60" width="380" height="380" rx="72" fill="#0C447C"/>
+  <clipPath id="inner-ios">
+    <rect x="60" y="60" width="380" height="380" rx="72"/>
+  </clipPath>
+  <g clip-path="url(#inner-ios)">
+    <line x1="60" y1="320" x2="440" y2="320" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <line x1="60" y1="250" x2="440" y2="250" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <line x1="60" y1="180" x2="440" y2="180" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <line x1="155" y1="60" x2="155" y2="440" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <line x1="250" y1="60" x2="250" y2="440" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <line x1="345" y1="60" x2="345" y2="440" stroke="#B5D4F4" stroke-width="2" opacity="0.25"/>
+    <polyline
+      points="90,390 135,378 178,362 215,342 248,318 276,288 300,258 322,228 344,202 365,178 382,158 392,120"
+      fill="none" stroke="#E6F1FB" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="392" cy="120" r="18" fill="#E6F1FB"/>
+    <circle cx="392" cy="120" r="30" fill="none" stroke="#E6F1FB" stroke-width="4" opacity="0.35"/>
+  </g>
+</svg>

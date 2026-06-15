@@ -76,7 +76,7 @@
           <Icon name={collapsed || mobileMenuOpen ? 'chevronRight' : 'chevronLeft'} size={18} />
         </button>
         <div class="brand">
-          <Icon name="dashboard" size={22} class="brand-icon" />
+          <img src="/brand.svg" alt="Trace" class="brand-logo" width="22" height="22" />
           <span class="brand-name">Trace</span>
         </div>
       </div>
@@ -159,6 +159,7 @@
           <button
             class="nav-link"
             class:active={currentPage === 'heatmap'}
+            onclick={() => navigate('heatmap')}
             title="Heatmap"
           >
             <span class="nav-icon"><Icon name="heatmap" size={20} /></span>
@@ -304,8 +305,9 @@
     align-items: center;
     gap: 8px;
   }
-  .brand :global(.brand-icon) {
-    color: var(--primary);
+  .brand-logo {
+    border-radius: 4px;
+    flex-shrink: 0;
   }
   .brand-name {
     font-size: 20px;

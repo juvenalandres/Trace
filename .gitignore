@@ -21,6 +21,7 @@ env/
 # Data (user uploads, database, backups)
 data/
 backups/
+pgdata/
 
 # IDE
 .vscode/*
