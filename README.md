@@ -47,7 +47,7 @@ Upload GPX/FIT files or log activities manually. Visualize volume, pace, elevati
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/trace.git
+git clone https://github.com/JuvenalAnderson/trace.git
 cd trace
 
 # Copy and edit configuration
@@ -56,13 +56,13 @@ cp .env.example .env
 # Generate a secure JWT secret (required)
 python -c "import secrets; print(secrets.token_urlsafe(64))"
 
-# Edit .env and set TRACE_JWT_SECRET, then start everything
-docker compose up
+# Edit .env and set TRACE_JWT_SECRET, POSTGRES_PASSWORD, then start
+docker compose up -d
 ```
 
-Open [http://localhost:8000](http://localhost:8000).
+Open [http://localhost:8000](http://localhost:8000). The first user to register is automatically made admin.
 
-The stack includes a PostgreSQL 16 database, the Trace API + frontend (served from the same process), and a scheduled backup service.
+The production compose pulls the pre-built image from `ghcr.io/juvenalandres/trace:latest` — no build step needed. Includes PostgreSQL 16, the Trace API, and the frontend (served from the same process).
 
 ## Configuration
 

@@ -1,6 +1,6 @@
 import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class SessionTarget(BaseModel):
@@ -48,6 +48,11 @@ class TrainingSessionResponse(BaseModel):
     activity_id: int | None = None
     status: str
     created_at: datetime.datetime
+
+    @field_validator("targets", mode="before")
+    @classmethod
+    def coerce_none_targets(cls, v):
+        return [] if v is None else v
 
 
 class TrainingPlanCreate(BaseModel):
