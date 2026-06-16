@@ -8,6 +8,7 @@
 
 Upload GPX/FIT files or log activities manually. Visualize volume, pace, elevation, and heart rate trends over time. Plan and schedule training sessions with structured targets.
 
+![](trace.gif)
 ---
 
 > **Disclaimer:** This application was built with extensive use of AI-assisted development. The models used include MiMo V2.5 Pro, Kimi 2.6, and DeepSeek V4 Flash. The architecture, code, and design were produced through iterative collaboration with these tools.
