@@ -21,12 +21,10 @@ Upload GPX/FIT files or log activities manually. Visualize volume, pace, elevati
 - **Zone analysis** -- configurable HR and power zones with collapsible cards
 - **Training load** -- CTL, ATL, TSB with exponential decay across gap days
 - **Training plans** -- calendar-based planning with structured session targets (distance, duration, pace, HR, RPE)
-- **Eddington number** -- SQL-computed E-number with distribution chart and qualifying rides/runs
-- **Year-in-review** -- monthly breakdown, PRs, favorite month/sport
+- **Year-in-review** -- monthly breakdown, PRs, favorite month/sport (Planned)
 - **Segments** -- user-defined route segments with PR tracking, leaderboard, auto-matching on new uploads, and manual back-match for existing activities; inline creation modal with elevation profile chart; dedicated detail page with interactive map, elevation profile with synced cursor, PR card, leaderboard, and paginated effort history
 - **Route planner** -- interactive map-based route builder with road snapping and elevation profiles
 - **Admin** -- first user is admin by default; admin can manage other users' roles
-- **Auth** -- JWT with refresh token rotation and httpOnly cookies
 
 ## Stack
 
@@ -47,9 +45,8 @@ Upload GPX/FIT files or log activities manually. Visualize volume, pace, elevati
 ## Quick Start
 
 ```bash
-# Clone the repo
-git clone https://github.com/YOUR_USERNAME/trace.git
-cd trace
+# Download files
+Download docker-compose.yml and .env.example
 
 # Copy and edit configuration
 cp .env.example .env
@@ -58,7 +55,7 @@ cp .env.example .env
 python -c "import secrets; print(secrets.token_urlsafe(64))"
 
 # Edit .env and set TRACE_JWT_SECRET, then start everything
-docker compose up
+docker compose up -d
 ```
 
 Open [http://localhost:8000](http://localhost:8000).
@@ -89,11 +86,6 @@ Set via environment variables in `.env`:
 # Dev mode with hot reload
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
-# Run tests
-docker compose exec app pytest
-
-# Lint
-docker compose exec app ruff check trace_app/
 ```
 
 The dev override mounts source directories for live reload. No local Python or Node installation required.
