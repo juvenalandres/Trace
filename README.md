@@ -1,7 +1,8 @@
 <p align="center">
-  <img src="frontend/public/favicon.svg" width="80" alt="Trace logo" style="vertical-align: middle"/>
-  <span style="font-size:2.5em; font-weight:700; margin-left:12px; vertical-align: middle; color:#185FA5">Trace</span>
+  <img src="frontend/public/favicon.svg" width="80" alt="Trace logo">
 </p>
+
+<h1 align="center">Trace</h1>
 
 **Self-hosted activity tracking and training planning platform.**
 
