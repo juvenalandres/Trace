@@ -4,6 +4,7 @@
 
 ```
 TWO PILLARS:
+
 ┌─────────────────────────────────┐  ┌─────────────────────────────────┐
 │  DATA STATISTICS & VIZ          │  │  TRAINING PLANNING              │
 │  Dashboard, Activities, Monthly │  │  Calendar, past + future plans  │
@@ -261,7 +262,7 @@ TWO PILLARS:
 - [x] **StatCard colors:** `color` and `bg` props for metric-specific icon colors (distance=#3b82f6, duration=#14b8a6, speed=#f97316, elevation=#f59e0b)
 - [x] **Profile page collapsible zones:** HR and Power zone cards start collapsed, click header to expand with chevron indicator
 
-## Phase 5 — Garmin API Sync
+## Phase 5 — Garmin API Sync (Discontinued)
 
 *One provider, done well. Others become stretch goals.*
 
@@ -434,7 +435,6 @@ gunzip -c ./backups/trace_YYYYMMDD_HHMMSS.sql.gz | docker compose exec -T db psq
 - [x] **Admin role management** — first registered user is admin by default; admin can promote/revoke admin status for other users
   - Backend: `GET /api/users` (admin-only), `PUT /api/users/{id}/admin` (admin-only, cannot self-modify)
   - Frontend: Profile page shows user list with role badges and toggle buttons (admin-only section)
-- [ ] Social features (follow users, activity feed, comments, kudos)
 - [x] **Route planner / route creation tool** — interactive map-based route builder with road/path snapping and elevation profiles
   - **Sidebar:** "Route Planner" entry under Training section (after Insights)
   - **Map:** Leaflet map with tile selector (5 providers); click to add waypoint markers (draggable); route polyline snaps to roads via OSRM routing engine
