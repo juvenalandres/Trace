@@ -546,7 +546,7 @@ async def upload_activity(
             break
 
     # Compute training load and update daily CTL/ATL/TSB
-    from trace_app.services.training_load import compute_trimp, compute_training_load, update_daily_training_load
+    from trace_app.services.training_load import compute_trimp, compute_training_load, update_daily_training_load, backfill_daily_loads
     
     session_load = None
     if stats.avg_hr and stats.duration_s:
@@ -559,6 +559,8 @@ async def upload_activity(
         stats.training_load = session_load
         activity_date = activity.start_time.date()
         await update_daily_training_load(db, user, activity_date, session_load)
+        # Backfill any gap days so CTL/ATL decay is reflected day-by-day
+        await backfill_daily_loads(db, user.id, user.max_hr, user.resting_hr)
 
     # Match segment efforts
     if points and source != "manual":
@@ -1838,7 +1840,10 @@ async def training_ctl(
 ):
     """Return CTL (Fitness), ATL (Fatigue), TSB (Form), ACWR for the last N days."""
     from trace_app.models.daily_training_load import DailyTrainingLoad
-    from trace_app.services.training_load import compute_acwr, acwr_status
+    from trace_app.services.training_load import backfill_daily_loads, compute_acwr, acwr_status
+
+    # Backfill zero-load days up to yesterday so decay is reflected in real time
+    await backfill_daily_loads(db, user.id, user.max_hr, user.resting_hr)
 
     today = date.today()
     start_date = today - timedelta(days=days)

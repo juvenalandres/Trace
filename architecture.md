@@ -143,7 +143,10 @@
 │  │  daily_training_load     user_id (FK), date, training_load,    │    │
 │  │                           ctl (fitness), atl (fatigue),         │    │
 │  │                           tsb (form), created_at                │    │
-│  │                           Unique constraint on (user_id, date) │    │
+│  │                           Unique constraint on (user_id, date)  │    │
+│  │                           Zero-load days backfilled on activity │    │
+│  │                           upload and on Insights page load so   │    │
+│  │                           CTL/ATL/TSB decay is reflected daily  │    │
 │  │                                                                │    │
 │  │  refresh_tokens           user_id (FK), token_hash              │    │
 │  │                           (SHA-256, unique), family_id          │    │
@@ -352,7 +355,8 @@
 │  │  Auth             JWT + rotation       httpOnly cookie,         │    │
 │  │                                        reuse detection          │    │
 │  │  Caching          TTLCache (in-memory) 256 entries, 60s TTL   │    │
-│  │  Background       Startup task         CTL/ATL/TSB recomputation │    │
+│  │  Background       Activity upload, page load   CTL/ATL/TSB recomputation, │    │
+│  │                                        zero-load day backfill  │    │
 │  │  Container        Docker Compose      PostgreSQL + app active  │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────────────────────┘

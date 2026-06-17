@@ -62,6 +62,44 @@ def compute_training_load(duration_s: float, avg_speed: float | None) -> float |
     return round(duration_min, 1)
 
 
+async def backfill_daily_loads(
+    db: AsyncSession,
+    user_id: int,
+    max_hr: int | None,
+    resting_hr: int | None,
+) -> None:
+    """Create zero-load DailyTrainingLoad records for missing days up to yesterday.
+
+    Ensures CTL/ATL/TSB decay is reflected day-by-day even without new activities.
+    """
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+
+    result = await db.execute(
+        select(DailyTrainingLoad)
+        .where(DailyTrainingLoad.user_id == user_id)
+        .order_by(DailyTrainingLoad.date.desc())
+        .limit(1)
+    )
+    latest = result.scalar_one_or_none()
+
+    if not latest or latest.date >= yesterday:
+        return
+
+    first_missing = latest.date + timedelta(days=1)
+    current = first_missing
+    while current <= yesterday:
+        db.add(DailyTrainingLoad(
+            user_id=user_id,
+            date=current,
+            training_load=0.0,
+        ))
+        current += timedelta(days=1)
+
+    await db.flush()
+    await recompute_ctl_atl_tsb(db, user_id, first_missing, max_hr, resting_hr)
+
+
 async def update_daily_training_load(
     db: AsyncSession,
     user: User,

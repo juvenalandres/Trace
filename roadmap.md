@@ -185,6 +185,7 @@ TWO PILLARS:
 - [x] **Statistics year selector:** "All" returned only last 2 years of data; personal records ignored year selection. Fixed: volume endpoint returns all-time when no year, personal-records accepts `year` param.
 - [x] **Volume chart x-axis labels:** All labels showed "Jan 1" when data spanned multiple years. Fixed by detecting multi-year data and showing year suffix in axis labels (e.g. "Jan '23").
 - [x] **CTL/ATL/TSB contaminated by old activities:** `recompute_ctl_atl_tsb` iterated daily records by array index, treating consecutive records as consecutive days. Uploading a 2018 activity caused stale CTL/ATL to carry directly into 2024 records. Fixed by computing actual day gaps between records and applying exponential decay: `value * (1 - decay)^gap_days`. Startup recomputation automatically fixes existing data.
+- [x] **CTL/ATL/TSB flat during rest days:** `DailyTrainingLoad` records were only created on activity upload. Days with zero activity had no record, so the GET endpoint fed `prev_ctl`/`prev_atl` through unchanged — CTL/ATL showed flat lines instead of decaying. Fixed by adding `backfill_daily_loads()` that creates zero-load records for every gap day up to yesterday and recomputes CTL/ATL/TSB with proper exponential decay. Called on both activity upload and on page load (inside `GET /api/training/ctl`).
 
 ## Security & Performance Audit
 
@@ -450,3 +451,56 @@ gunzip -c ./backups/trace_YYYYMMDD_HHMMSS.sql.gz | docker compose exec -T db psq
 - [ ] Power curve (best efforts over standard durations)
 - [ ] Webhook support (notify on new activity)
 - [ ] PWA (offline support, installable)
+
+## Phase 9 — AI Training Coach
+
+*Conversational AI coach that knows your training history, fitness status, and existing plans. Can suggest new plans, modify existing ones, and answer training questions through a chat interface.*
+
+### Architecture
+
+- **Provider abstraction** (`trace_app/services/ai_provider.py`): abstract `AIProvider` base with `chat(messages, tools)` method; `OpenAIProvider` (uses `openai` SDK, key from `AI_OPENAI_API_KEY` env var) and `OllamaProvider` (calls Ollama `/v1/chat/completions`, URL from `AI_OLLAMA_BASE_URL` env var, default `http://localhost:11434`)
+- **Tool definitions** (`trace_app/services/ai_tools.py`): function-calling tools the AI can invoke — `get_user_profile`, `get_recent_activities`, `get_training_status`, `get_current_plans`, `suggest_plan` (capture-only, does not save), `suggest_session` (capture-only)
+- **System prompt** (`trace_app/services/ai_prompt.py`): expert coach persona with periodization, progressive overload, CTL targets (30-60 low, 60-90 moderate, 90-120 high per sport), ACWR guidelines (<0.8 de-training, 0.8-1.3 sweet spot, >1.5 danger), 10%/week ramp rate limit
+- **Orchestrator** (`trace_app/services/ai_coach.py`): context building (injects profile + recent activities + fitness status into system prompt), tool execution, response formatting
+- **Chat models**: new `chat_conversations` and `chat_messages` DB tables for conversation continuity
+
+### API
+
+- `POST /api/ai/chat` — accepts `{ messages: [{ role, content }] }`, returns `{ reply: string, suggestions: PlanSuggestion[] | null }`; `suggest_plan`/`suggest_session` tool calls are captured and returned as structured JSON alongside the text reply (not saved to DB until user confirms)
+
+### Frontend
+
+- **New page** `AiCoach.svelte` — chat message list with markdown rendering, text input, typing indicator
+- **Plan suggestion cards**: when AI returns `suggestions`, render as rich cards with inline preview (sessions, targets, weekly breakdown), **"Save to My Plans"** button (calls `POST /api/training/plans` with proposal data, navigates to training plans), **"Refine"** button (pre-fills chat with refinement request)
+- **Existing plan modification**: user requests changes → AI calls `get_current_plans` → returns modified suggestion → **"Update Plan"** button calls `PUT /api/training/plans/{id}`
+- **Conversation management**: auto-create conversation on first visit, "New Chat" button, recent conversation list (sidebar or dropdown)
+- **Routing**: `'ai-coach'` page type in `App.svelte`, navigation button in Training section
+- **Configuration**: settings to select provider (OpenAI / Ollama), API key / base URL input, model selection
+
+### Key Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Provider abstraction | OpenAI + Ollama | User can choose cloud or fully local |
+| Tool calling vs raw JSON | OpenAI tool/function calling | Structured, validated output; works with Ollama too |
+| Save flow | Preview → user confirms → save | Prevents AI from cluttering plans without consent |
+| Conversation storage | New DB table | Continuity across page refreshes; user can revisit |
+
+### Files
+
+| File | Action |
+|------|--------|
+| `trace_app/services/ai_provider.py` | Create |
+| `trace_app/services/ai_tools.py` | Create |
+| `trace_app/services/ai_prompt.py` | Create |
+| `trace_app/services/ai_coach.py` | Create |
+| `trace_app/models/chat_conversation.py` | Create |
+| `trace_app/models/chat_message.py` | Create |
+| `trace_app/schemas/ai.py` | Create |
+| `trace_app/main.py` | Modify — add `POST /api/ai/chat` |
+| `trace_app/config.py` | Modify — add AI config vars |
+| `.env.example` | Modify — add AI env vars |
+| `frontend/src/pages/AiCoach.svelte` | Create |
+| `frontend/src/App.svelte` | Modify — add routing |
+| `frontend/src/lib/api/types.ts` | Modify — add AI API methods |
+| `migrations/versions/` | Create — chat tables |
