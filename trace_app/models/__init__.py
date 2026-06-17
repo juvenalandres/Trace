@@ -17,6 +17,7 @@ from trace_app.models.route import Route
 from trace_app.models.segment import Segment
 from trace_app.models.segment_effort import SegmentEffort
 from trace_app.models.sync_source import SyncSource
+from trace_app.models.training_block import TrainingBlock
 from trace_app.models.training_plan import TrainingPlan
 from trace_app.models.training_session import TrainingSession
 from trace_app.models.user import User
@@ -39,6 +40,7 @@ __all__ = [
     "SyncProvider",
     "SyncSource",
     "TargetType",
+    "TrainingBlock",
     "TrainingPlan",
     "TrainingSession",
     "User",

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { trainingApi } from '$lib/api/types';
-  import type { TrainingPlan, TrainingSession, SessionTarget } from '$lib/api/types';
+  import type { TrainingPlan, TrainingSession, SessionTarget, TrainingBlock } from '$lib/api/types';
   import Icon from '$lib/components/Icon.svelte';
   import Modal from '$lib/components/Modal.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -38,6 +38,18 @@
   let sessIntervals = $state('');
   let sessNotes = $state('');
   let sessRestDay = $state(false);
+  let sessBlockId = $state<number | null>(null);
+
+  let showBlockForm = $state(false);
+  let editingBlock = $state<TrainingBlock | null>(null);
+  let showDeleteBlock = $state(false);
+  let deletingBlock = $state<TrainingBlock | null>(null);
+  let savingBlock = $state(false);
+  let blockName = $state('');
+  let blockDescription = $state('');
+  let blockFocus = $state('');
+  let blockStartDate = $state('');
+  let blockEndDate = $state('');
 
   const sportOptions = ['run', 'ride', 'swim', 'hike', 'walk', 'other'];
   const targetTypeOptions = ['distance', 'duration', 'pace', 'hr_zone', 'power_zone', 'free'];
@@ -139,6 +151,7 @@
     sessIntervals = '';
     sessNotes = '';
     sessRestDay = false;
+    sessBlockId = null;
     showSessionForm = true;
   }
 
@@ -152,6 +165,7 @@
     sessIntervals = s.intervals ?? '';
     sessNotes = s.notes ?? '';
     sessRestDay = s.rest_day;
+    sessBlockId = s.block_id;
     showSessionForm = true;
   }
 
@@ -168,6 +182,7 @@
         intervals: sessIntervals.trim() || undefined,
         notes: sessNotes.trim() || undefined,
         rest_day: sessRestDay,
+        block_id: sessBlockId ?? undefined,
       };
       if (editingSession) {
         const updated = await trainingApi.updateSession(editingSession.id, data);
@@ -210,6 +225,98 @@
       if (t.unit) parts.push(t.unit);
       return parts.join(' ');
     }).join(' + ');
+  }
+
+  function blockColor(index: number, total: number): string {
+    if (total <= 1) return '#3b82f6';
+    const hue = (index / total) * 360;
+    return `hsl(${hue}, 55%, 45%)`;
+  }
+
+  let groupedSessions = $derived.by(() => {
+    if (!selectedPlan) return { blocks: [] as { block: TrainingBlock; sessions: TrainingSession[] }[], ungrouped: [] as TrainingSession[] };
+    const sorted = [...selectedPlan.sessions].sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
+    const blockMap = new Map<number | null, TrainingSession[]>();
+    for (const s of sorted) {
+      const key = s.block_id;
+      if (!blockMap.has(key)) blockMap.set(key, []);
+      blockMap.get(key)!.push(s);
+    }
+    const blocks = (selectedPlan.blocks || []).map(b => ({
+      block: b,
+      sessions: blockMap.get(b.id) || [],
+    }));
+    const ungrouped = blockMap.get(null) || [];
+    return { blocks, ungrouped };
+  });
+
+  function openAddBlock() {
+    editingBlock = null;
+    blockName = '';
+    blockDescription = '';
+    blockFocus = '';
+    blockStartDate = '';
+    blockEndDate = '';
+    showBlockForm = true;
+  }
+
+  function openEditBlock(b: TrainingBlock) {
+    editingBlock = b;
+    blockName = b.name;
+    blockDescription = b.description ?? '';
+    blockFocus = b.focus ?? '';
+    blockStartDate = b.start_date ?? '';
+    blockEndDate = b.end_date ?? '';
+    showBlockForm = true;
+  }
+
+  async function saveBlock() {
+    if (!selectedPlan || !blockName.trim()) return;
+    savingBlock = true;
+    try {
+      const data = {
+        name: blockName.trim(),
+        description: blockDescription.trim() || undefined,
+        focus: blockFocus.trim() || undefined,
+        sort_order: editingBlock?.sort_order,
+        start_date: blockStartDate || undefined,
+        end_date: blockEndDate || undefined,
+      };
+      if (editingBlock) {
+        const updated = await trainingApi.updateBlock(editingBlock.id, data);
+        selectedPlan = {
+          ...selectedPlan,
+          blocks: selectedPlan.blocks.map(b => b.id === updated.id ? updated : b),
+        };
+      } else {
+        const created = await trainingApi.createBlock(selectedPlan.id, data);
+        selectedPlan = {
+          ...selectedPlan,
+          blocks: [...selectedPlan.blocks, created],
+        };
+      }
+      showBlockForm = false;
+    } catch (e: unknown) {
+      error = e instanceof Error ? e.message : 'Failed to save block';
+    } finally {
+      savingBlock = false;
+    }
+  }
+
+  async function confirmDeleteBlock() {
+    if (!deletingBlock || !selectedPlan) return;
+    try {
+      await trainingApi.deleteBlock(deletingBlock.id);
+      selectedPlan = {
+        ...selectedPlan,
+        blocks: selectedPlan.blocks.filter(b => b.id !== deletingBlock!.id),
+        sessions: selectedPlan.sessions.map(s => s.block_id === deletingBlock!.id ? { ...s, block_id: null } : s),
+      };
+      showDeleteBlock = false;
+      deletingBlock = null;
+    } catch (e: unknown) {
+      error = e instanceof Error ? e.message : 'Failed to delete block';
+    }
   }
 
   let sortedSessions = $derived(
@@ -263,53 +370,136 @@
 
       <div class="sessions-section">
         <div class="sessions-header">
-          <h2>Sessions ({sortedSessions.length})</h2>
-          <button class="btn btn-primary" onclick={openAddSession}>
-            <Icon name="segments" size={16} />
-            Add Session
-          </button>
+          <h2>Sessions ({selectedPlan.sessions.length})</h2>
+          <div class="sessions-actions">
+            <button class="btn btn-outline btn-sm" onclick={openAddBlock}>
+              <Icon name="segments" size={16} />
+              Add Block
+            </button>
+            <button class="btn btn-primary" onclick={openAddSession}>
+              <Icon name="segments" size={16} />
+              Add Session
+            </button>
+          </div>
         </div>
 
-        {#if sortedSessions.length === 0}
+        {#if selectedPlan.sessions.length === 0}
           <EmptyState icon="calendar" message="No sessions yet. Add your first training session." action="Add Session" onAction={openAddSession} />
         {:else}
           <div class="sessions-list">
-            {#each sortedSessions as s}
-              <div class="session-card" class:rest-day={s.rest_day}>
-                <div class="session-top">
-                  <div class="session-date">{formatDate(s.scheduled_date)}</div>
-                  {#if s.rest_day}
-                    <span class="rest-badge">Rest</span>
-                  {:else if s.sport_type}
-                    <span class="sport-badge sport-{s.sport_type}">{s.sport_type}</span>
-                  {/if}
-                  {#if s.status === 'completed'}
-                    <span class="status-badge completed">Done</span>
-                  {:else if s.status === 'skipped'}
-                    <span class="status-badge skipped">Skipped</span>
-                  {/if}
-                </div>
-                <div class="session-name">{s.name || (s.rest_day ? 'Rest Day' : 'Untitled')}</div>
-                {#if !s.rest_day && s.targets && s.targets.length > 0}
-                  <div class="target-badges">
-                    {#each s.targets as target}
-                      <span class="target-badge target-{target.type}">{formatTarget({ ...s, targets: [target] })}</span>
-                    {/each}
+            {#each groupedSessions.blocks as group}
+              <div class="block-section">
+                <div class="block-header" style="border-left: 4px solid {blockColor(group.block.sort_order, groupedSessions.blocks.length)}">
+                  <div class="block-info">
+                    <span class="block-name">{group.block.name}</span>
+                    {#if group.block.focus}
+                      <span class="block-focus">{group.block.focus}</span>
+                    {/if}
+                    {#if group.block.description}
+                      <span class="block-desc">{group.block.description}</span>
+                    {/if}
+                    {#if group.block.start_date || group.block.end_date}
+                      <span class="block-dates">{group.block.start_date ? formatDate(group.block.start_date) : ''} {group.block.start_date && group.block.end_date ? '→' : ''} {group.block.end_date ? formatDate(group.block.end_date) : ''}</span>
+                    {/if}
+                    <span class="block-count">{group.sessions.length} session{group.sessions.length !== 1 ? 's' : ''}</span>
                   </div>
-                {/if}
-                {#if s.notes}
-                  <div class="session-notes">{s.notes}</div>
-                {/if}
-                <div class="session-actions">
-                  <button class="icon-btn" onclick={() => openEditSession(s)} title="Edit">
-                    <Icon name="segments" size={16} />
-                  </button>
-                  <button class="icon-btn danger" onclick={() => { deletingSession = s; showDeleteSession = true; }} title="Delete">
-                    <Icon name="logout" size={16} />
-                  </button>
+                  <div class="block-actions">
+                    <button class="icon-btn" onclick={() => openEditBlock(group.block)} title="Edit block">
+                      <Icon name="segments" size={14} />
+                    </button>
+                    <button class="icon-btn danger" onclick={() => { deletingBlock = group.block; showDeleteBlock = true; }} title="Delete block">
+                      <Icon name="logout" size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div class="block-sessions">
+                  {#each group.sessions as s}
+                    <div class="session-card" class:rest-day={s.rest_day}>
+                      <div class="session-top">
+                        <div class="session-date">{formatDate(s.scheduled_date)}</div>
+                        {#if s.rest_day}
+                          <span class="rest-badge">Rest</span>
+                        {:else if s.sport_type}
+                          <span class="sport-badge sport-{s.sport_type}">{s.sport_type}</span>
+                        {/if}
+                        {#if s.status === 'completed'}
+                          <span class="status-badge completed">Done</span>
+                        {:else if s.status === 'skipped'}
+                          <span class="status-badge skipped">Skipped</span>
+                        {/if}
+                      </div>
+                      <div class="session-name">{s.name || (s.rest_day ? 'Rest Day' : 'Untitled')}</div>
+                      {#if !s.rest_day && s.targets && s.targets.length > 0}
+                        <div class="target-badges">
+                          {#each s.targets as target}
+                            <span class="target-badge target-{target.type}">{formatTarget({ ...s, targets: [target] })}</span>
+                          {/each}
+                        </div>
+                      {/if}
+                      {#if s.notes}
+                        <div class="session-notes">{s.notes}</div>
+                      {/if}
+                      <div class="session-actions">
+                        <button class="icon-btn" onclick={() => openEditSession(s)} title="Edit">
+                          <Icon name="segments" size={16} />
+                        </button>
+                        <button class="icon-btn danger" onclick={() => { deletingSession = s; showDeleteSession = true; }} title="Delete">
+                          <Icon name="logout" size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  {/each}
                 </div>
               </div>
             {/each}
+            {#if groupedSessions.ungrouped.length > 0}
+              <div class="block-section">
+                <div class="block-header ungrouped">
+                  <div class="block-info">
+                    <span class="block-name">Ungrouped</span>
+                    <span class="block-count">{groupedSessions.ungrouped.length} session{groupedSessions.ungrouped.length !== 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+                <div class="block-sessions">
+                  {#each groupedSessions.ungrouped as s}
+                    <div class="session-card" class:rest-day={s.rest_day}>
+                      <div class="session-top">
+                        <div class="session-date">{formatDate(s.scheduled_date)}</div>
+                        {#if s.rest_day}
+                          <span class="rest-badge">Rest</span>
+                        {:else if s.sport_type}
+                          <span class="sport-badge sport-{s.sport_type}">{s.sport_type}</span>
+                        {/if}
+                        {#if s.status === 'completed'}
+                          <span class="status-badge completed">Done</span>
+                        {:else if s.status === 'skipped'}
+                          <span class="status-badge skipped">Skipped</span>
+                        {/if}
+                      </div>
+                      <div class="session-name">{s.name || (s.rest_day ? 'Rest Day' : 'Untitled')}</div>
+                      {#if !s.rest_day && s.targets && s.targets.length > 0}
+                        <div class="target-badges">
+                          {#each s.targets as target}
+                            <span class="target-badge target-{target.type}">{formatTarget({ ...s, targets: [target] })}</span>
+                          {/each}
+                        </div>
+                      {/if}
+                      {#if s.notes}
+                        <div class="session-notes">{s.notes}</div>
+                      {/if}
+                      <div class="session-actions">
+                        <button class="icon-btn" onclick={() => openEditSession(s)} title="Edit">
+                          <Icon name="segments" size={16} />
+                        </button>
+                        <button class="icon-btn danger" onclick={() => { deletingSession = s; showDeleteSession = true; }} title="Delete">
+                          <Icon name="logout" size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </div>
         {/if}
       </div>
@@ -423,6 +613,17 @@
         Rest day
       </label>
     </div>
+    {#if selectedPlan && selectedPlan.blocks.length > 0}
+      <div class="field">
+        <label for="sess-block">Block</label>
+        <select id="sess-block" bind:value={sessBlockId}>
+          <option value={null}>- None -</option>
+          {#each selectedPlan.blocks as b}
+            <option value={b.id}>{b.name}</option>
+          {/each}
+        </select>
+      </div>
+    {/if}
     {#if !sessRestDay}
       <div class="field">
         <label>Targets</label>
@@ -484,6 +685,50 @@
     <div class="form-actions">
       <button class="btn btn-outline" onclick={() => showDeleteSession = false}>Cancel</button>
       <button class="btn btn-danger" onclick={confirmDeleteSession}>Delete</button>
+    </div>
+  </div>
+</Modal>
+
+<Modal open={showBlockForm} title={editingBlock ? 'Edit Block' : 'Add Block'} onClose={() => showBlockForm = false}>
+  <div class="form">
+    <div class="field">
+      <label for="block-name">Name</label>
+      <input id="block-name" type="text" bind:value={blockName} placeholder="e.g. Base Phase, Build, Taper" />
+    </div>
+    <div class="field">
+      <label for="block-focus">Focus</label>
+      <input id="block-focus" type="text" bind:value={blockFocus} placeholder="e.g. Endurance, Intensity, Recovery" />
+    </div>
+    <div class="field">
+      <label for="block-desc">Description</label>
+      <textarea id="block-desc" bind:value={blockDescription} rows="2" placeholder="Optional description..."></textarea>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="block-start">Start Date</label>
+        <input id="block-start" type="date" bind:value={blockStartDate} />
+      </div>
+      <div class="field">
+        <label for="block-end">End Date</label>
+        <input id="block-end" type="date" bind:value={blockEndDate} />
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick={() => showBlockForm = false}>Cancel</button>
+      <button class="btn btn-primary" onclick={saveBlock} disabled={savingBlock || !blockName.trim()}>
+        {savingBlock ? 'Saving...' : 'Save'}
+      </button>
+    </div>
+  </div>
+</Modal>
+
+<Modal open={showDeleteBlock} title="Delete Block" onClose={() => showDeleteBlock = false}>
+  <div class="delete-confirm">
+    <p>Are you sure you want to delete <strong>{deletingBlock?.name}</strong>?</p>
+    <p class="warning">Sessions in this block will be unlinked (not deleted).</p>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick={() => showDeleteBlock = false}>Cancel</button>
+      <button class="btn btn-danger" onclick={confirmDeleteBlock}>Delete</button>
     </div>
   </div>
 </Modal>
@@ -734,6 +979,57 @@
   }
   .session-card:hover .session-actions { opacity: 1; }
 
+  .block-section { margin-bottom: 24px; }
+  .block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: 8px 8px 0 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .block-header.ungrouped { border-left: 4px solid var(--border); }
+  .block-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .block-name {
+    font-size: var(--font-size-base, 13px);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--text);
+  }
+  .block-focus {
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-secondary);
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--bg);
+  }
+  .block-desc, .block-dates, .block-count {
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-secondary);
+  }
+  .block-count { font-weight: var(--font-weight-medium, 500); }
+  .block-actions { display: flex; gap: 4px; }
+  .block-sessions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 0 0 8px 8px;
+    border: 0.5px solid var(--border);
+    border-top: none;
+  }
+  .sessions-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .btn {
     display: inline-flex;
     align-items: center;
@@ -852,7 +1148,7 @@
     .field-row { flex-direction: column; }
     .plan-header { flex-wrap: wrap; gap: 8px; }
     .sessions-header { flex-wrap: wrap; gap: 8px; }
-    .sessions-list { grid-template-columns: 1fr; }
+    .block-sessions { grid-template-columns: 1fr; }
     .session-actions { opacity: 1; }
   }
 </style>

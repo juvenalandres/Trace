@@ -15,7 +15,7 @@ from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Uploa
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import Date, func, literal_column, select
+from sqlalchemy import Date, func, literal_column, select, update
 from sqlalchemy.orm import selectinload
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -30,6 +30,7 @@ from trace_app.logging import request_id_var, user_id_var, setup_logging
 from trace_app.models import Activity, ActivityStats, Gear, Lap, Route, User, UserZone
 from trace_app.models.training_plan import TrainingPlan
 from trace_app.models.training_session import TrainingSession
+from trace_app.models.training_block import TrainingBlock
 from trace_app.routers.auth import router as auth_router
 from trace_app.routers.segments import router as segments_router
 
@@ -55,6 +56,9 @@ from trace_app.schemas.route import (
 from trace_app.schemas.user import UserResponse, UserUpdate
 from trace_app.schemas.user_zone import UserZoneCreate, UserZoneResponse, UserZoneUpdate
 from trace_app.schemas.training import (
+    TrainingBlockCreate,
+    TrainingBlockResponse,
+    TrainingBlockUpdate,
     TrainingPlanCreate,
     TrainingPlanResponse,
     TrainingPlanUpdate,
@@ -1417,7 +1421,7 @@ async def create_plan(
     result = await db.execute(
         select(TrainingPlan)
         .where(TrainingPlan.id == plan.id)
-        .options(selectinload(TrainingPlan.sessions))
+        .options(selectinload(TrainingPlan.sessions), selectinload(TrainingPlan.blocks).selectinload(TrainingBlock.sessions))
     )
     return result.scalar_one()
 
@@ -1431,7 +1435,7 @@ async def list_plans(
         select(TrainingPlan)
         .where(TrainingPlan.user_id == user.id)
         .order_by(TrainingPlan.created_at.desc())
-        .options(selectinload(TrainingPlan.sessions))
+        .options(selectinload(TrainingPlan.sessions), selectinload(TrainingPlan.blocks).selectinload(TrainingBlock.sessions))
     )
     return result.scalars().all()
 
@@ -1445,7 +1449,7 @@ async def get_plan(
     result = await db.execute(
         select(TrainingPlan)
         .where(TrainingPlan.id == plan_id, TrainingPlan.user_id == user.id)
-        .options(selectinload(TrainingPlan.sessions))
+        .options(selectinload(TrainingPlan.sessions), selectinload(TrainingPlan.blocks).selectinload(TrainingBlock.sessions))
     )
     plan = result.scalar_one_or_none()
     if not plan:
@@ -1463,7 +1467,7 @@ async def update_plan(
     result = await db.execute(
         select(TrainingPlan)
         .where(TrainingPlan.id == plan_id, TrainingPlan.user_id == user.id)
-        .options(selectinload(TrainingPlan.sessions))
+        .options(selectinload(TrainingPlan.sessions), selectinload(TrainingPlan.blocks).selectinload(TrainingBlock.sessions))
     )
     plan = result.scalar_one_or_none()
     if not plan:
@@ -1482,7 +1486,7 @@ async def update_plan(
     result = await db.execute(
         select(TrainingPlan)
         .where(TrainingPlan.id == plan.id)
-        .options(selectinload(TrainingPlan.sessions))
+        .options(selectinload(TrainingPlan.sessions), selectinload(TrainingPlan.blocks).selectinload(TrainingBlock.sessions))
     )
     return result.scalar_one()
 
@@ -1532,6 +1536,7 @@ async def create_session(
         intervals=data.intervals,
         notes=data.notes,
         rest_day=data.rest_day,
+        block_id=data.block_id,
     )
     db.add(session)
     await db.commit()
@@ -1571,6 +1576,8 @@ async def update_session(
         session.notes = data.notes
     if data.rest_day is not None:
         session.rest_day = data.rest_day
+    if data.block_id is not None:
+        session.block_id = data.block_id
     if data.status is not None:
         session.status = data.status
 
@@ -1594,6 +1601,156 @@ async def delete_session(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     await db.delete(session)
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Training Blocks ───────────────────────────────────────────────
+
+
+@app.post("/api/training/plans/{plan_id}/blocks", response_model=TrainingBlockResponse)
+async def create_block(
+    plan_id: int,
+    data: TrainingBlockCreate,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    plan_result = await db.execute(
+        select(TrainingPlan).where(TrainingPlan.id == plan_id, TrainingPlan.user_id == user.id)
+    )
+    plan = plan_result.scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    if data.sort_order is None:
+        result = await db.execute(
+            select(func.max(TrainingBlock.sort_order))
+            .where(TrainingBlock.plan_id == plan_id)
+        )
+        max_order = result.scalar()
+        sort_order = (max_order or 0) + 1
+    else:
+        sort_order = data.sort_order
+
+    block = TrainingBlock(
+        plan_id=plan_id,
+        name=data.name,
+        description=data.description,
+        focus=data.focus,
+        sort_order=sort_order,
+        start_date=data.start_date,
+        end_date=data.end_date,
+    )
+    db.add(block)
+    await db.commit()
+    result = await db.execute(
+        select(TrainingBlock)
+        .where(TrainingBlock.id == block.id)
+        .options(selectinload(TrainingBlock.sessions))
+    )
+    return result.scalar_one()
+
+
+@app.get("/api/training/plans/{plan_id}/blocks", response_model=list[TrainingBlockResponse])
+async def list_blocks(
+    plan_id: int,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    plan_result = await db.execute(
+        select(TrainingPlan).where(TrainingPlan.id == plan_id, TrainingPlan.user_id == user.id)
+    )
+    if not plan_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    result = await db.execute(
+        select(TrainingBlock)
+        .where(TrainingBlock.plan_id == plan_id)
+        .order_by(TrainingBlock.sort_order)
+        .options(selectinload(TrainingBlock.sessions))
+    )
+    return result.scalars().all()
+
+
+@app.get("/api/training/blocks/{block_id}", response_model=TrainingBlockResponse)
+async def get_block(
+    block_id: int,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    result = await db.execute(
+        select(TrainingBlock)
+        .join(TrainingPlan, TrainingPlan.id == TrainingBlock.plan_id)
+        .where(TrainingBlock.id == block_id, TrainingPlan.user_id == user.id)
+        .options(selectinload(TrainingBlock.sessions))
+    )
+    block = result.scalar_one_or_none()
+    if not block:
+        raise HTTPException(status_code=404, detail="Block not found")
+    return block
+
+
+@app.put("/api/training/blocks/{block_id}", response_model=TrainingBlockResponse)
+async def update_block(
+    block_id: int,
+    data: TrainingBlockUpdate,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    result = await db.execute(
+        select(TrainingBlock)
+        .join(TrainingPlan, TrainingPlan.id == TrainingBlock.plan_id)
+        .where(TrainingBlock.id == block_id, TrainingPlan.user_id == user.id)
+        .options(selectinload(TrainingBlock.sessions))
+    )
+    block = result.scalar_one_or_none()
+    if not block:
+        raise HTTPException(status_code=404, detail="Block not found")
+
+    if data.name is not None:
+        block.name = data.name
+    if data.description is not None:
+        block.description = data.description
+    if data.focus is not None:
+        block.focus = data.focus
+    if data.sort_order is not None:
+        block.sort_order = data.sort_order
+    if data.start_date is not None:
+        block.start_date = data.start_date
+    if data.end_date is not None:
+        block.end_date = data.end_date
+
+    await db.commit()
+    result = await db.execute(
+        select(TrainingBlock)
+        .where(TrainingBlock.id == block.id)
+        .options(selectinload(TrainingBlock.sessions))
+    )
+    return result.scalar_one()
+
+
+@app.delete("/api/training/blocks/{block_id}")
+async def delete_block(
+    block_id: int,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    result = await db.execute(
+        select(TrainingBlock)
+        .join(TrainingPlan, TrainingPlan.id == TrainingBlock.plan_id)
+        .where(TrainingBlock.id == block_id, TrainingPlan.user_id == user.id)
+    )
+    block = result.scalar_one_or_none()
+    if not block:
+        raise HTTPException(status_code=404, detail="Block not found")
+
+    # Unlink sessions before deleting block (block_id FK has ON DELETE SET NULL)
+    await db.execute(
+        update(TrainingSession)
+        .where(TrainingSession.block_id == block_id)
+        .values(block_id=None)
+    )
+    await db.delete(block)
     await db.commit()
     return {"ok": True}
 

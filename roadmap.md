@@ -384,6 +384,9 @@ gunzip -c ./backups/trace_YYYYMMDD_HHMMSS.sql.gz | docker compose exec -T db psq
 
 - [x] Training plan CRUD API (`/api/training/plans` — create, list, detail, update, delete)
 - [x] Training session CRUD API (`/api/training/plans/{id}/sessions`, `/api/training/sessions/{id}`)
+- [x] Training block CRUD API (`/api/training/plans/{id}/blocks`, `/api/training/blocks/{id}`) — mesocycle grouping between plan and session
+- [x] Session assignment to blocks (optional `block_id` FK, sessions without a block display as ungrouped)
+- [x] Dynamic block colors computed from sort order and total block count (HSL evenly spaced hues)
 - [x] Session targets: support multiple targets per session (distance, duration, pace, HR zone, power zone, free) stored as JSON array
 - [x] Structured workouts: intervals field (text/JSON) per session
 - [x] Rest day markers, notes per session

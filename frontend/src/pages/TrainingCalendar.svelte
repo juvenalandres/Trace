@@ -77,6 +77,17 @@
     plans.flatMap(p => p.sessions)
   );
 
+  let blockColorMap = $derived(
+    new Map(
+      plans.flatMap(p =>
+        (p.blocks || []).map((b, i, arr) => [
+          b.id,
+          arr.length <= 1 ? '#3b82f6' : `hsl(${(i / arr.length) * 360}, 55%, 45%)`,
+        ] as const)
+      )
+    )
+  );
+
   let sessionsByDate = $derived(
     new Map<string, TrainingSession[]>(
       (() => {
@@ -443,7 +454,7 @@
                 <div
                   class="week-session-card"
                   class:rest={s.rest_day}
-                  style={s.rest_day ? '' : `border-left: 3px solid ${sportColors[s.sport_type ?? 'other'] ?? sportColors.other}`}
+                  style={s.rest_day ? '' : `border-left: 3px solid ${s.block_id && blockColorMap.has(s.block_id) ? blockColorMap.get(s.block_id) : sportColors[s.sport_type ?? 'other'] ?? sportColors.other}`}
                 >
                   <div class="week-session-top">
                     {#if s.rest_day}
@@ -503,6 +514,9 @@
     <div class="day-sessions">
       {#each selectedDaySessions as s}
         <div class="session-card" class:rest-day={s.rest_day}>
+          {#if s.block_id && blockColorMap.has(s.block_id)}
+            <div class="block-indicator" style="background: {blockColorMap.get(s.block_id)}"></div>
+          {/if}
           <div class="session-top">
             {#if s.rest_day}
               <span class="rest-badge">Rest</span>
@@ -529,7 +543,18 @@
           {#if s.notes}
             <div class="session-notes">{s.notes}</div>
           {/if}
-          <div class="session-plan">Plan: {plans.find(p => p.id === s.plan_id)?.name ?? '-'}</div>
+          <div class="session-plan">
+            Plan: {plans.find(p => p.id === s.plan_id)?.name ?? '-'}
+            {#if s.block_id}
+              {#each plans as p}
+                {#each p.blocks || [] as b}
+                  {#if b.id === s.block_id}
+                    <span class="session-block" style="color: {blockColorMap.get(s.block_id)}">· {b.name}</span>
+                  {/if}
+                {/each}
+              {/each}
+            {/if}
+          </div>
           {#if s.activity_id}
             <button class="view-activity-link" onclick={() => { showDayDetail = false; onNavigate?.('activity', s.activity_id!); }}>
               View Activity →
@@ -848,10 +873,19 @@
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
   }
   .session-card.rest-day {
     border-style: dashed;
     opacity: 0.7;
+  }
+  .block-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
   }
   .session-top {
     display: flex;
@@ -1002,6 +1036,13 @@
     font-size: 12px;
     color: var(--text-secondary);
     margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .session-block {
+    font-weight: var(--font-weight-medium, 500);
   }
   .view-activity-link {
     display: inline-block;

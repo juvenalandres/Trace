@@ -374,8 +374,22 @@ export interface TrainingSession {
   notes: string | null;
   rest_day: boolean;
   activity_id: number | null;
+  block_id: number | null;
   status: string;
   created_at: string;
+}
+
+export interface TrainingBlock {
+  id: number;
+  plan_id: number;
+  name: string;
+  description: string | null;
+  focus: string | null;
+  sort_order: number;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+  sessions: TrainingSession[];
 }
 
 export interface TrainingPlan {
@@ -387,6 +401,7 @@ export interface TrainingPlan {
   end_date: string | null;
   created_at: string;
   sessions: TrainingSession[];
+  blocks: TrainingBlock[];
 }
 
 export const trainingApi = {
@@ -402,13 +417,25 @@ export const trainingApi = {
 
   deletePlan: (id: number) => api.del(`/training/plans/${id}`),
 
-  createSession: (planId: number, data: { scheduled_date: string; sport_type?: string; name?: string; description?: string; targets?: SessionTarget[]; intervals?: string; notes?: string; rest_day?: boolean }) =>
+  createSession: (planId: number, data: { scheduled_date: string; sport_type?: string; name?: string; description?: string; targets?: SessionTarget[]; intervals?: string; notes?: string; rest_day?: boolean; block_id?: number }) =>
     api.post<TrainingSession>(`/training/plans/${planId}/sessions`, data),
 
-  updateSession: (id: number, data: Partial<{ scheduled_date: string; sport_type: string; name: string; description: string; targets: SessionTarget[]; intervals: string; notes: string; rest_day: boolean; status: string }>) =>
+  updateSession: (id: number, data: Partial<{ scheduled_date: string; sport_type: string; name: string; description: string; targets: SessionTarget[]; intervals: string; notes: string; rest_day: boolean; block_id: number | null; status: string }>) =>
     api.put<TrainingSession>(`/training/sessions/${id}`, data),
 
   deleteSession: (id: number) => api.del(`/training/sessions/${id}`),
+
+  createBlock: (planId: number, data: { name: string; description?: string; focus?: string; sort_order?: number; start_date?: string; end_date?: string }) =>
+    api.post<TrainingBlock>(`/training/plans/${planId}/blocks`, data),
+
+  listBlocks: (planId: number) => api.get<TrainingBlock[]>(`/training/plans/${planId}/blocks`),
+
+  getBlock: (blockId: number) => api.get<TrainingBlock>(`/training/blocks/${blockId}`),
+
+  updateBlock: (blockId: number, data: Partial<{ name: string; description: string; focus: string; sort_order: number; start_date: string; end_date: string }>) =>
+    api.put<TrainingBlock>(`/training/blocks/${blockId}`, data),
+
+  deleteBlock: (blockId: number) => api.del(`/training/blocks/${blockId}`),
 
   insights: () => api.get<TrainingInsights>('/training/insights'),
 

@@ -24,9 +24,15 @@ class TrainingSession(Base):
     activity_id: Mapped[int | None] = mapped_column(
         ForeignKey("activities.id"), default=None
     )
+    block_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_blocks.id", ondelete="SET NULL"), default=None
+    )
     status: Mapped[str] = mapped_column(String(50), default="planned")
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     plan: Mapped["TrainingPlan"] = relationship(back_populates="sessions")  # noqa: F821
+    block: Mapped["TrainingBlock | None"] = relationship(  # noqa: F821
+        back_populates="sessions"
+    )
