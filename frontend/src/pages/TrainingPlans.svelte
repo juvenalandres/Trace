@@ -7,12 +7,14 @@
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorBanner from '$lib/components/ErrorBanner.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import TrainingPlanTimeline from '$lib/components/TrainingPlanTimeline.svelte';
 
   let plans = $state<TrainingPlan[]>([]);
   let loading = $state(true);
   let error = $state('');
 
   let selectedPlan = $state<TrainingPlan | null>(null);
+  let viewMode = $state<'list' | 'timeline'>('list');
   let showPlanForm = $state(false);
   let editingPlan = $state<TrainingPlan | null>(null);
   let showDeletePlan = $state(false);
@@ -370,7 +372,19 @@
 
       <div class="sessions-section">
         <div class="sessions-header">
-          <h2>Sessions ({selectedPlan.sessions.length})</h2>
+          <div class="sessions-header-left">
+            <h2>Sessions ({selectedPlan.sessions.length})</h2>
+            <div class="view-toggle">
+              <button class="toggle-btn" class:active={viewMode === 'list'} onclick={() => viewMode = 'list'}>
+                <Icon name="segments" size={14} />
+                List
+              </button>
+              <button class="toggle-btn" class:active={viewMode === 'timeline'} onclick={() => viewMode = 'timeline'}>
+                <Icon name="calendar" size={14} />
+                Timeline
+              </button>
+            </div>
+          </div>
           <div class="sessions-actions">
             <button class="btn btn-outline btn-sm" onclick={openAddBlock}>
               <Icon name="segments" size={16} />
@@ -383,7 +397,9 @@
           </div>
         </div>
 
-        {#if selectedPlan.sessions.length === 0}
+        {#if viewMode === 'timeline'}
+          <TrainingPlanTimeline plan={selectedPlan} />
+        {:else if selectedPlan.sessions.length === 0}
           <EmptyState icon="calendar" message="No sessions yet. Add your first training session." action="Add Session" onAction={openAddSession} />
         {:else}
           <div class="sessions-list">
@@ -856,7 +872,42 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
   }
+  .sessions-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .view-toggle {
+    display: flex;
+    gap: 2px;
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 2px;
+  }
+  .toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: none;
+    border-radius: 6px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: background .1s, color .1s;
+  }
+  .toggle-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .toggle-btn:hover:not(.active) { color: var(--text); }
   .sessions-list {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

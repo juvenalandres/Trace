@@ -385,6 +385,7 @@ export interface TrainingBlock {
   name: string;
   description: string | null;
   focus: string | null;
+  block_type: string;
   sort_order: number;
   start_date: string | null;
   end_date: string | null;
@@ -425,14 +426,14 @@ export const trainingApi = {
 
   deleteSession: (id: number) => api.del(`/training/sessions/${id}`),
 
-  createBlock: (planId: number, data: { name: string; description?: string; focus?: string; sort_order?: number; start_date?: string; end_date?: string }) =>
+  createBlock: (planId: number, data: { name: string; description?: string; focus?: string; block_type?: string; sort_order?: number; start_date?: string; end_date?: string }) =>
     api.post<TrainingBlock>(`/training/plans/${planId}/blocks`, data),
 
   listBlocks: (planId: number) => api.get<TrainingBlock[]>(`/training/plans/${planId}/blocks`),
 
   getBlock: (blockId: number) => api.get<TrainingBlock>(`/training/blocks/${blockId}`),
 
-  updateBlock: (blockId: number, data: Partial<{ name: string; description: string; focus: string; sort_order: number; start_date: string; end_date: string }>) =>
+  updateBlock: (blockId: number, data: Partial<{ name: string; description: string; focus: string; block_type: string; sort_order: number; start_date: string; end_date: string }>) =>
     api.put<TrainingBlock>(`/training/blocks/${blockId}`, data),
 
   deleteBlock: (blockId: number) => api.del(`/training/blocks/${blockId}`),

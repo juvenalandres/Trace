@@ -74,6 +74,7 @@ class TrainingBlockCreate(BaseModel):
     name: str = Field(max_length=255)
     description: str | None = Field(default=None, max_length=10000)
     focus: str | None = Field(default=None, max_length=100)
+    block_type: str | None = Field(default=None, max_length=50)
     sort_order: int | None = None
     start_date: datetime.date | None = None
     end_date: datetime.date | None = None
@@ -83,6 +84,7 @@ class TrainingBlockUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
     description: str | None = Field(default=None, max_length=10000)
     focus: str | None = Field(default=None, max_length=100)
+    block_type: str | None = Field(default=None, max_length=50)
     sort_order: int | None = None
     start_date: datetime.date | None = None
     end_date: datetime.date | None = None
@@ -96,6 +98,7 @@ class TrainingBlockResponse(BaseModel):
     name: str
     description: str | None = None
     focus: str | None = None
+    block_type: str = "general"
     sort_order: int = 0
     start_date: datetime.date | None = None
     end_date: datetime.date | None = None

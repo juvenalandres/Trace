@@ -1637,6 +1637,7 @@ async def create_block(
         name=data.name,
         description=data.description,
         focus=data.focus,
+        block_type=data.block_type or "general",
         sort_order=sort_order,
         start_date=data.start_date,
         end_date=data.end_date,
@@ -1713,6 +1714,8 @@ async def update_block(
         block.description = data.description
     if data.focus is not None:
         block.focus = data.focus
+    if data.block_type is not None:
+        block.block_type = data.block_type
     if data.sort_order is not None:
         block.sort_order = data.sort_order
     if data.start_date is not None:

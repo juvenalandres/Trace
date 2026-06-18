@@ -16,6 +16,7 @@ class TrainingBlock(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, default=None)
     focus: Mapped[str | None] = mapped_column(String(100), default=None)
+    block_type: Mapped[str] = mapped_column(String(50), default="general")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     start_date: Mapped[datetime.date | None] = mapped_column(Date, default=None)
     end_date: Mapped[datetime.date | None] = mapped_column(Date, default=None)
