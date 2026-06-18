@@ -313,30 +313,30 @@
     font-size: 13px;
   }
 
-  .calendar { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-  .cal-row { display: flex; align-items: center; gap: 8px; }
+  .calendar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .cal-row { display: flex; align-items: center; gap: 10px; }
   .cal-month {
-    font-size: 11px; font-weight: 600; color: var(--text-secondary);
-    width: 30px; text-align: right; flex-shrink: 0;
+    font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    width: 34px; text-align: right; flex-shrink: 0;
   }
-  .cal-weeks { display: flex; gap: 3px; flex: 1; }
+  .cal-weeks { display: flex; gap: 4px; flex: 1; }
 
   .week-box {
-    flex: 1; height: 44px; border-radius: 6px;
+    flex: 1; height: 60px; border-radius: 8px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 9px; font-weight: 600; cursor: pointer; line-height: 1.2;
+    font-size: 11px; font-weight: 600; cursor: pointer; line-height: 1.3;
     transition: transform .1s, box-shadow .1s;
     border: 0.5px solid transparent; position: relative;
     font-family: inherit; min-width: 0; overflow: hidden;
   }
-  .week-box:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+  .week-box:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.12); }
   .week-box.active { outline: 2.5px solid var(--text); outline-offset: 2px; }
   .week-box.now::before {
-    content: '▼'; position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
-    font-size: 7px; color: var(--text);
+    content: '▼'; position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+    font-size: 9px; color: var(--text);
   }
-  .week-tag { font-size: 9px; font-weight: 700; line-height: 1; }
-  .week-sub { font-size: 7px; opacity: .65; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding: 0 2px; }
+  .week-tag { font-size: 11px; font-weight: 700; line-height: 1; }
+  .week-sub { font-size: 9px; opacity: .65; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding: 0 4px; }
 
   .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
   .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); }
@@ -422,6 +422,6 @@
 
   @media (max-width: 540px) {
     .sessions-grid { grid-template-columns: 1fr; }
-    .week-box { height: 38px; }
+    .week-box { height: 52px; }
   }
 </style>
