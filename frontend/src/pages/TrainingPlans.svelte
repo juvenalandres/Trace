@@ -398,7 +398,7 @@
         </div>
 
         {#if viewMode === 'timeline'}
-          <TrainingPlanTimeline plan={selectedPlan} />
+          <TrainingPlanTimeline plan={selectedPlan} onSessionClick={openEditSession} />
         {:else if selectedPlan.sessions.length === 0}
           <EmptyState icon="calendar" message="No sessions yet. Add your first training session." action="Add Session" onAction={openAddSession} />
         {:else}

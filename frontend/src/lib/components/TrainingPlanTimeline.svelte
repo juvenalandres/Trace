@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { TrainingPlan, TrainingBlock, TrainingSession } from '$lib/api/types';
+  import Modal from './Modal.svelte';
 
-  let { plan }: { plan: TrainingPlan } = $props();
+  let { plan, onSessionClick }: { plan: TrainingPlan; onSessionClick?: (s: TrainingSession) => void } = $props();
 
   interface WeekInfo {
     date: Date;
@@ -21,6 +22,7 @@
 
   let selectedWeek = $state<WeekInfo | null>(null);
   let selectedBlock = $state<TrainingBlock | null>(null);
+  let selectedSession = $state<TrainingSession | null>(null);
 
   const blockTypeColor: Record<string, { bg: string; text: string; border: string; label: string }> = {
     base:      { bg: '#E1F5EE', text: '#085041', border: '#5DCAA5', label: 'Base' },
@@ -269,7 +271,7 @@
         {#if selectedWeek.sessions.length > 0}
           <div class="sessions-grid">
             {#each selectedWeek.sessions as s}
-              <div class="session-card" class:rest-day={s.rest_day}>
+              <div class="session-card" class:rest-day={s.rest_day} onclick={() => selectedSession = s}>
                 <div class="session-eyebrow">{formatDate(s.scheduled_date)}</div>
                 <div class="session-name">{s.name || (s.rest_day ? 'Rest Day' : 'Untitled')}</div>
                 {#if !s.rest_day && s.targets && s.targets.length > 0}
@@ -299,6 +301,68 @@
     </div>
   {/if}
 </div>
+
+<Modal open={selectedSession !== null} onClose={() => selectedSession = null}>
+  {#if selectedSession}
+    {@const s = selectedSession}
+    <div class="session-detail">
+      <div class="sd-top">
+        <div class="sd-date">{new Date(s.scheduled_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+        <div class="sd-badges">
+          {#if s.rest_day}
+            <span class="sd-badge rest">Rest</span>
+          {:else if s.sport_type}
+            <span class="sd-badge sport">{(s.sport_type)}</span>
+          {/if}
+          {#if s.status === 'completed'}
+            <span class="sd-badge done">Done</span>
+          {:else if s.status === 'skipped'}
+            <span class="sd-badge skip">Skipped</span>
+          {:else}
+            <span class="sd-badge planned">Planned</span>
+          {/if}
+        </div>
+      </div>
+
+      <div class="sd-name">{s.name || (s.rest_day ? 'Rest Day' : 'Untitled')}</div>
+
+      {#if s.description}
+        <p class="sd-desc">{s.description}</p>
+      {/if}
+
+      {#if !s.rest_day && s.targets && s.targets.length > 0}
+        <div class="sd-section">
+          <div class="sd-section-label">Targets</div>
+          <div class="sd-targets">
+            {#each s.targets as t}
+              <span class="sd-target target-{t.type}">{t.type}{t.value ? ` ${t.value}` : ''}{t.unit ? ` ${t.unit}` : ''}</span>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
+      {#if s.intervals}
+        <div class="sd-section">
+          <div class="sd-section-label">Intervals</div>
+          <p class="sd-text">{s.intervals}</p>
+        </div>
+      {/if}
+
+      {#if s.notes}
+        <div class="sd-section">
+          <div class="sd-section-label">Notes</div>
+          <p class="sd-text">{s.notes}</p>
+        </div>
+      {/if}
+
+      <div class="sd-actions">
+        <button class="btn btn-primary" onclick={() => { const sess = selectedSession; selectedSession = null; onSessionClick?.(sess!); }}>
+          Edit Session
+        </button>
+      </div>
+    </div>
+  {/if}
+</Modal>
 
 <style>
   .timeline { }
@@ -387,7 +451,7 @@
   .sessions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .session-card {
     background: var(--bg); border: 0.5px solid var(--border);
-    border-radius: 8px; padding: 10px 12px;
+    border-radius: 8px; padding: 10px 12px; cursor: pointer;
   }
   .session-card.rest-day { border-style: dashed; opacity: .7; }
   .session-eyebrow {
@@ -419,6 +483,58 @@
   .sport-hike { background: #f9731620; color: #f97316; }
   .sport-walk { background: #f59e0b20; color: #f59e0b; }
   .sport-other { background: #8b5cf620; color: #8b5cf6; }
+
+  .session-detail {
+    min-width: 380px;
+    font-family: var(--font-sans);
+  }
+  .sd-top {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;
+  }
+  .sd-date {
+    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  }
+  .sd-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sd-badge {
+    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px;
+  }
+  .sd-badge.rest { background: #f3f4f6; color: #6b7280; }
+  .sd-badge.sport { background: #3b82f620; color: #3b82f6; text-transform: uppercase; }
+  .sd-badge.done { background: #dcfce7; color: #166534; }
+  .sd-badge.skip { background: #fef3c7; color: #92400e; }
+  .sd-badge.planned { background: #e0f2fe; color: #0369a1; }
+
+  .sd-name {
+    font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 10px;
+  }
+  .sd-desc {
+    font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 16px;
+  }
+  .sd-section { margin-bottom: 14px; }
+  .sd-section-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-secondary); margin-bottom: 4px;
+  }
+  .sd-text {
+    font-size: 13px; color: var(--text); line-height: 1.5; margin: 0; white-space: pre-wrap;
+  }
+  .sd-targets { display: flex; flex-wrap: wrap; gap: 4px; }
+  .sd-target {
+    font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 6px;
+  }
+  .sd-actions {
+    display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; padding-top: 14px;
+    border-top: 0.5px solid var(--border);
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border: none; border-radius: 8px;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { opacity: 0.9; }
 
   @media (max-width: 540px) {
     .sessions-grid { grid-template-columns: 1fr; }
