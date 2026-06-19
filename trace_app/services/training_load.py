@@ -70,14 +70,16 @@ async def backfill_daily_loads(
 ) -> None:
     """Create zero-load DailyTrainingLoad records for missing days up to yesterday.
 
-    Ensures CTL/ATL/TSB decay is reflected day-by-day even without new activities.
+    Uses the latest record ON or BEFORE yesterday as the starting point,
+    so that gaps between the previous activity and today are always filled
+    even when the most recent upload was today.
     """
     today = date.today()
     yesterday = today - timedelta(days=1)
 
     result = await db.execute(
         select(DailyTrainingLoad)
-        .where(DailyTrainingLoad.user_id == user_id)
+        .where(DailyTrainingLoad.user_id == user_id, DailyTrainingLoad.date <= yesterday)
         .order_by(DailyTrainingLoad.date.desc())
         .limit(1)
     )

@@ -2,20 +2,32 @@ import { getToken, setToken, clearToken } from '../stores/auth';
 
 const BASE = '/api';
 
+let refreshPromise: Promise<string | null> | null = null;
+
 async function refreshToken(): Promise<string | null> {
-  const res = await fetch(`${BASE}/auth/refresh`, {
-    method: 'POST',
-    credentials: 'same-origin',
-  });
+  if (refreshPromise) return refreshPromise;
 
-  if (!res.ok) {
-    clearToken();
-    return null;
+  refreshPromise = (async () => {
+    const res = await fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+
+    if (!res.ok) {
+      clearToken();
+      return null;
+    }
+
+    const data = await res.json();
+    setToken(data.access_token);
+    return data.access_token;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
   }
-
-  const data = await res.json();
-  setToken(data.access_token);
-  return data.access_token;
 }
 
 async function request<T>(

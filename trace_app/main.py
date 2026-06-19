@@ -2008,6 +2008,10 @@ async def training_ctl(
     today = date.today()
     start_date = today - timedelta(days=days)
 
+    # CTL/ATL decay constants (same as in recompute_ctl_atl_tsb)
+    ctl_decay = 1 - math.exp(-1 / 42)
+    atl_decay = 1 - math.exp(-1 / 7)
+
     # Load all records into a dict for O(1) lookup — avoids day-by-day iteration
     result = await db.execute(
         select(DailyTrainingLoad)
@@ -2041,6 +2045,8 @@ async def training_ctl(
             })
         else:
             load_history.append(0.0)
+            prev_ctl = prev_ctl + (0 - prev_ctl) * ctl_decay
+            prev_atl = prev_atl + (0 - prev_atl) * atl_decay
             daily_data.append({
                 "date": current_date.isoformat(),
                 "training_load": 0.0,
