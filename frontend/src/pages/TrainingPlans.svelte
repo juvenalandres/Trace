@@ -14,7 +14,7 @@
   let error = $state('');
 
   let selectedPlan = $state<TrainingPlan | null>(null);
-  let viewMode = $state<'list' | 'timeline'>('list');
+  let viewMode = $state<'list' | 'timeline'>('timeline');
   let showPlanForm = $state(false);
   let editingPlan = $state<TrainingPlan | null>(null);
   let showDeletePlan = $state(false);
@@ -141,6 +141,10 @@
 
   function backToList() {
     selectedPlan = null;
+  }
+
+  function switchView(mode: 'list' | 'timeline') {
+    viewMode = mode;
   }
 
   function openAddSession() {
@@ -321,9 +325,7 @@
     }
   }
 
-  let sortedSessions = $derived(
-    selectedPlan ? [...selectedPlan.sessions].sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date)) : []
-  );
+
 </script>
 
 <div class="page">
@@ -375,11 +377,11 @@
           <div class="sessions-header-left">
             <h2>Sessions ({selectedPlan.sessions.length})</h2>
             <div class="view-toggle">
-              <button class="toggle-btn" class:active={viewMode === 'list'} onclick={() => viewMode = 'list'}>
+              <button class="toggle-btn" class:active={viewMode === 'list'} onclick={() => switchView('list')}>
                 <Icon name="segments" size={14} />
                 List
               </button>
-              <button class="toggle-btn" class:active={viewMode === 'timeline'} onclick={() => viewMode = 'timeline'}>
+              <button class="toggle-btn" class:active={viewMode === 'timeline'} onclick={() => switchView('timeline')}>
                 <Icon name="calendar" size={14} />
                 Timeline
               </button>
@@ -909,9 +911,9 @@
   }
   .toggle-btn:hover:not(.active) { color: var(--text); }
   .sessions-list {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
   .session-card {
     background: var(--card-bg, var(--surface));
@@ -1030,7 +1032,7 @@
   }
   .session-card:hover .session-actions { opacity: 1; }
 
-  .block-section { margin-bottom: 24px; }
+  .block-section { }
   .block-header {
     display: flex;
     align-items: center;
@@ -1066,9 +1068,9 @@
   .block-count { font-weight: var(--font-weight-medium, 500); }
   .block-actions { display: flex; gap: 4px; }
   .block-sessions {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     padding: 12px;
     background: var(--bg);
     border-radius: 0 0 8px 8px;
@@ -1199,7 +1201,6 @@
     .field-row { flex-direction: column; }
     .plan-header { flex-wrap: wrap; gap: 8px; }
     .sessions-header { flex-wrap: wrap; gap: 8px; }
-    .block-sessions { grid-template-columns: 1fr; }
     .session-actions { opacity: 1; }
   }
 </style>
