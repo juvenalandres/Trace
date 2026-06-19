@@ -513,50 +513,85 @@
   {:else}
     <div class="day-sessions">
       {#each selectedDaySessions as s}
-        <div class="session-card" class:rest-day={s.rest_day}>
-          {#if s.block_id && blockColorMap.has(s.block_id)}
-            <div class="block-indicator" style="background: {blockColorMap.get(s.block_id)}"></div>
-          {/if}
-          <div class="session-top">
-            {#if s.rest_day}
-              <span class="rest-badge">Rest</span>
-            {:else if s.sport_type}
-              <span class="sport-badge sport-{s.sport_type}">{s.sport_type}</span>
+        <div class="sd">
+          <div class="sd-header">
+            <div class="sd-header-left">
+              <div class="sd-date">{new Date(s.scheduled_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+              <div class="sd-name">{s.name || (s.rest_day ? 'Rest Day' : 'Untitled')}</div>
+            </div>
+            <div class="sd-badges">
+              {#if s.rest_day}
+                <span class="sdb sdb-rest">Rest</span>
+              {:else if s.sport_type}
+                <span class="sdb sdb-sport">{(s.sport_type)}</span>
+              {/if}
+              {#if s.status === 'completed'}
+                <span class="sdb sdb-done">Done</span>
+              {:else if s.status === 'skipped'}
+                <span class="sdb sdb-skip">Skipped</span>
+              {:else}
+                <span class="sdb sdb-plan">Planned</span>
+              {/if}
+            </div>
+          </div>
+
+          <div class="sd-body">
+            {#if !s.rest_day}
+              <div class="sdb-section">
+                <div class="sdb-section-title">Targets</div>
+                {#if s.targets && s.targets.length > 0}
+                  <div class="sdb-pills">
+                    {#each s.targets as t}
+                      <span class="sdb-pill target-{t.type}">{t.type}{t.value ? ` ${t.value}` : ''}{t.unit ? ` ${t.unit}` : ''}</span>
+                    {/each}
+                  </div>
+                {:else}
+                  <span class="sdb-empty">Free session</span>
+                {/if}
+              </div>
+
+              {#if s.intervals}
+                {@const items = s.intervals.split(',').map(i => i.trim()).filter(Boolean)}
+                <div class="sdb-section">
+                  <div class="sdb-section-title">Intervals ({items.length})</div>
+                  <ul class="sdb-interval-list">
+                    {#each items as item}
+                      <li class="sdb-interval-item">{item}</li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
             {/if}
-            {#if s.status === 'completed'}
-              <span class="status-badge completed">Done</span>
-            {:else if s.status === 'skipped'}
-              <span class="status-badge skipped">Skipped</span>
+
+            {#if s.description}
+              <div class="sdb-section">
+                <div class="sdb-section-title">Description</div>
+                <p class="sdb-text">{s.description}</p>
+              </div>
+            {/if}
+
+            {#if s.notes}
+              <div class="sdb-section">
+                <div class="sdb-section-title">Notes</div>
+                <p class="sdb-text">{s.notes}</p>
+              </div>
             {/if}
           </div>
-          <div class="session-name">{s.name || (s.rest_day ? 'Rest Day' : 'Untitled')}</div>
-          {#if !s.rest_day && s.targets && s.targets.length > 0}
-            <div class="target-badges">
-              {#each s.targets as target}
-                <span class="target-badge target-{target.type}">{formatTarget({ ...s, targets: [target] })}</span>
-              {/each}
-            </div>
-          {/if}
-          {#if s.description}
-            <div class="session-desc">{s.description}</div>
-          {/if}
-          {#if s.notes}
-            <div class="session-notes">{s.notes}</div>
-          {/if}
-          <div class="session-plan">
+
+          <div class="sd-plan">
             Plan: {plans.find(p => p.id === s.plan_id)?.name ?? '-'}
             {#if s.block_id}
               {#each plans as p}
                 {#each p.blocks || [] as b}
                   {#if b.id === s.block_id}
-                    <span class="session-block" style="color: {blockColorMap.get(s.block_id)}">· {b.name}</span>
+                    <span class="sd-block" style="color: {blockColorMap.get(s.block_id)}">· {b.name}</span>
                   {/if}
                 {/each}
               {/each}
             {/if}
           </div>
           {#if s.activity_id}
-            <button class="view-activity-link" onclick={() => { showDayDetail = false; onNavigate?.('activity', s.activity_id!); }}>
+            <button class="sd-activity-link" onclick={() => { showDayDetail = false; onNavigate?.('activity', s.activity_id!); }}>
               View Activity →
             </button>
           {/if}
@@ -868,55 +903,76 @@
     gap: 10px;
     min-width: 320px;
   }
-  .session-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
-    position: relative;
-    overflow: hidden;
+
+  .sd { min-width: 380px; max-width: 520px; font-family: var(--font-sans); }
+
+  .sd-header {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    margin-bottom: 14px; padding-bottom: 14px;
+    border-bottom: 0.5px solid var(--border);
   }
-  .session-card.rest-day {
-    border-style: dashed;
-    opacity: 0.7;
+  .sd-header-left { display: flex; flex-direction: column; gap: 4px; }
+  .sd-date {
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
   }
-  .block-indicator {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
+  .sd-name {
+    font-size: 20px; font-weight: 700; color: var(--text);
   }
-  .session-top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
+  .sd-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sdb {
+    font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 6px;
   }
-  .sport-badge {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    padding: 2px 8px;
-    border-radius: 10px;
+  .sdb-rest { background: #f3f4f6; color: #6b7280; }
+  .sdb-sport { background: #3b82f620; color: #3b82f6; text-transform: uppercase; }
+  .sdb-done { background: #dcfce7; color: #166534; }
+  .sdb-skip { background: #fef3c7; color: #92400e; }
+  .sdb-plan { background: #e0f2fe; color: #0369a1; }
+
+  .sd-body { display: flex; flex-direction: column; gap: 10px; }
+
+  .sdb-section {
+    border: 0.5px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
     background: var(--bg);
-    color: var(--text-secondary);
   }
-  .sport-run { background: #22c55e20; color: #22c55e; }
-  .sport-ride { background: #3b82f620; color: #3b82f6; }
-  .sport-swim { background: #06b6d420; color: #06b6d4; }
-  .sport-hike { background: #f9731620; color: #f97316; }
-  .sport-walk { background: #f59e0b20; color: #f59e0b; }
-  .sport-other { background: #8b5cf620; color: #8b5cf6; }
-  .rest-badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 10px;
-    background: #f3f4f6;
-    color: #6b7280;
+  .sdb-section-title {
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-secondary); margin-bottom: 6px;
   }
+  .sdb-text {
+    font-size: 13px; color: var(--text); line-height: 1.5; margin: 0; white-space: pre-wrap;
+  }
+  .sdb-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+  .sdb-pill {
+    font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 6px;
+  }
+  .sdb-empty { font-size: 12px; color: var(--text-secondary); font-style: italic; }
+  .sdb-interval-list {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .sdb-interval-item {
+    font-size: 13px; color: var(--text); line-height: 1.5;
+  }
+  .sdb-interval-item::before { content: '•'; margin-right: 6px; color: var(--text-secondary); }
+
+  .sd-plan {
+    font-size: 12px; color: var(--text-secondary);
+    margin-top: 8px; padding-top: 10px;
+    border-top: 0.5px solid var(--border);
+    display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  }
+  .sd-block { font-weight: 500; }
+  .sd-activity-link {
+    margin-top: 8px;
+    display: inline-block;
+    background: none; border: none;
+    font-size: 12px; font-weight: 600;
+    color: var(--primary);
+    cursor: pointer; padding: 0;
+  }
+  .sd-activity-link:hover { text-decoration: underline; }
+
   .status-badge {
     font-size: 11px;
     font-weight: 600;
@@ -926,11 +982,29 @@
   .status-badge.completed { background: #dcfce7; color: #166534; }
   .status-badge.skipped { background: #fef3c7; color: #92400e; }
   .session-name {
-    font-size: 15px;
-    font-weight: 500;
+    font-size: 20px;
+    font-weight: 700;
     color: var(--text);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
+  .session-body { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+  .sb-section { }
+  .sb-section-title {
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-secondary); margin-bottom: 6px;
+  }
+  .sb-text {
+    font-size: 13px; color: var(--text); line-height: 1.5; margin: 0; white-space: pre-wrap;
+  }
+  .sb-empty { font-size: 12px; color: var(--text-secondary); font-style: italic; }
+  .sb-interval-list {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .sb-interval-item {
+    font-size: 13px; color: var(--text); line-height: 1.5;
+  }
+  .sb-interval-item::before { content: '•'; margin-right: 5px; color: var(--text-tertiary, #9ca3af); }
   .target-badge {
     display: inline-block;
     font-size: 11px;
@@ -1022,43 +1096,6 @@
     border-radius: 50%;
     display: inline-block;
   }
-  .session-desc {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
-  }
-  .session-notes {
-    font-size: 12px;
-    color: var(--text-secondary);
-    font-style: italic;
-  }
-  .session-plan {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-top: 4px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
-  }
-  .session-block {
-    font-weight: var(--font-weight-medium, 500);
-  }
-  .view-activity-link {
-    display: inline-block;
-    margin-top: 6px;
-    padding: 0;
-    border: none;
-    background: none;
-    color: var(--primary);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  .view-activity-link:hover {
-    text-decoration: underline;
-  }
-
   .view-toggle {
     display: flex;
     gap: 2px;

@@ -284,6 +284,14 @@
                 {#if s.description}
                   <div class="session-desc">{s.description}</div>
                 {/if}
+                {#if !s.rest_day && s.intervals}
+                  {@const items = s.intervals.split(',').map(i => i.trim()).filter(Boolean)}
+                  <div class="session-intervals">
+                    {#each items as item}
+                      <span class="session-interval">{item}</span>
+                    {/each}
+                  </div>
+                {/if}
                 {#if s.sport_type && !s.rest_day}
                   <span class="sport-tag sport-{s.sport_type}">{s.sport_type}</span>
                 {/if}
@@ -305,57 +313,72 @@
 <Modal open={selectedSession !== null} onClose={() => selectedSession = null}>
   {#if selectedSession}
     {@const s = selectedSession}
-    <div class="session-detail">
-      <div class="sd-top">
-        <div class="sd-date">{new Date(s.scheduled_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+    <div class="sd">
+      <div class="sd-header">
+        <div class="sd-header-left">
+          <div class="sd-date">{new Date(s.scheduled_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+          <div class="sd-name">{s.name || (s.rest_day ? 'Rest Day' : 'Untitled')}</div>
+        </div>
         <div class="sd-badges">
           {#if s.rest_day}
-            <span class="sd-badge rest">Rest</span>
+            <span class="sdb sdb-rest">Rest</span>
           {:else if s.sport_type}
-            <span class="sd-badge sport">{(s.sport_type)}</span>
+            <span class="sdb sdb-sport">{(s.sport_type)}</span>
           {/if}
           {#if s.status === 'completed'}
-            <span class="sd-badge done">Done</span>
+            <span class="sdb sdb-done">Done</span>
           {:else if s.status === 'skipped'}
-            <span class="sd-badge skip">Skipped</span>
+            <span class="sdb sdb-skip">Skipped</span>
           {:else}
-            <span class="sd-badge planned">Planned</span>
+            <span class="sdb sdb-plan">Planned</span>
           {/if}
         </div>
       </div>
 
-      <div class="sd-name">{s.name || (s.rest_day ? 'Rest Day' : 'Untitled')}</div>
-
-      {#if s.description}
-        <p class="sd-desc">{s.description}</p>
-      {/if}
-
-      {#if !s.rest_day && s.targets && s.targets.length > 0}
-        <div class="sd-section">
-          <div class="sd-section-label">Targets</div>
-          <div class="sd-targets">
-            {#each s.targets as t}
-              <span class="sd-target target-{t.type}">{t.type}{t.value ? ` ${t.value}` : ''}{t.unit ? ` ${t.unit}` : ''}</span>
-            {/each}
+      <div class="sd-body">
+        {#if !s.rest_day}
+          <div class="sdb-section">
+            <div class="sdb-section-title">Targets</div>
+            {#if s.targets && s.targets.length > 0}
+              <div class="sdb-pills">
+                {#each s.targets as t}
+                  <span class="sdb-pill target-{t.type}">{t.type}{t.value ? ` ${t.value}` : ''}{t.unit ? ` ${t.unit}` : ''}</span>
+                {/each}
+              </div>
+            {:else}
+              <span class="sdb-empty">Free session</span>
+            {/if}
           </div>
-        </div>
-      {/if}
 
-      {#if s.intervals}
-        <div class="sd-section">
-          <div class="sd-section-label">Intervals</div>
-          <p class="sd-text">{s.intervals}</p>
-        </div>
-      {/if}
+          {#if s.intervals}
+            {@const items = s.intervals.split(',').map(i => i.trim()).filter(Boolean)}
+            <div class="sdb-section">
+              <div class="sdb-section-title">Intervals ({items.length})</div>
+              <ul class="sdb-interval-list">
+                {#each items as item}
+                  <li class="sdb-interval-item">{item}</li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+        {/if}
 
-      {#if s.notes}
-        <div class="sd-section">
-          <div class="sd-section-label">Notes</div>
-          <p class="sd-text">{s.notes}</p>
-        </div>
-      {/if}
+        {#if s.description}
+          <div class="sdb-section">
+            <div class="sdb-section-title">Description</div>
+            <p class="sdb-text">{s.description}</p>
+          </div>
+        {/if}
 
-      <div class="sd-actions">
+        {#if s.notes}
+          <div class="sdb-section">
+            <div class="sdb-section-title">Notes</div>
+            <p class="sdb-text">{s.notes}</p>
+          </div>
+        {/if}
+      </div>
+
+      <div class="sd-footer">
         <button class="btn btn-primary" onclick={() => { const sess = selectedSession; selectedSession = null; onSessionClick?.(sess!); }}>
           Edit Session
         </button>
@@ -460,6 +483,9 @@
   }
   .session-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
   .session-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.5; margin-top: 3px; }
+  .session-intervals { display: flex; flex-direction: column; gap: 1px; margin-top: 3px; }
+  .session-interval { font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+  .session-interval::before { content: '•'; margin-right: 4px; color: var(--text-tertiary, #9ca3af); }
 
   .target-pills { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
   .target-pill {
@@ -484,46 +510,62 @@
   .sport-walk { background: #f59e0b20; color: #f59e0b; }
   .sport-other { background: #8b5cf620; color: #8b5cf6; }
 
-  .session-detail {
-    min-width: 380px;
-    font-family: var(--font-sans);
+  .sd {
+    min-width: 380px; max-width: 520px; font-family: var(--font-sans);
   }
-  .sd-top {
-    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;
+
+  .sd-header {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    margin-bottom: 14px; padding-bottom: 14px;
+    border-bottom: 0.5px solid var(--border);
   }
+  .sd-header-left { display: flex; flex-direction: column; gap: 4px; }
   .sd-date {
-    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
+  }
+  .sd-name {
+    font-size: 20px; font-weight: 700; color: var(--text);
   }
   .sd-badges { display: flex; gap: 6px; flex-wrap: wrap; }
-  .sd-badge {
-    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px;
+  .sdb {
+    font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 6px;
   }
-  .sd-badge.rest { background: #f3f4f6; color: #6b7280; }
-  .sd-badge.sport { background: #3b82f620; color: #3b82f6; text-transform: uppercase; }
-  .sd-badge.done { background: #dcfce7; color: #166534; }
-  .sd-badge.skip { background: #fef3c7; color: #92400e; }
-  .sd-badge.planned { background: #e0f2fe; color: #0369a1; }
+  .sdb-rest { background: #f3f4f6; color: #6b7280; }
+  .sdb-sport { background: #3b82f620; color: #3b82f6; text-transform: uppercase; }
+  .sdb-done { background: #dcfce7; color: #166534; }
+  .sdb-skip { background: #fef3c7; color: #92400e; }
+  .sdb-plan { background: #e0f2fe; color: #0369a1; }
 
-  .sd-name {
-    font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 10px;
+  .sd-body { display: flex; flex-direction: column; gap: 10px; }
+
+  .sdb-section {
+    border: 0.5px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+    background: var(--bg);
   }
-  .sd-desc {
-    font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 16px;
-  }
-  .sd-section { margin-bottom: 14px; }
-  .sd-section-label {
+  .sdb-section-title {
     font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--text-secondary); margin-bottom: 4px;
+    color: var(--text-secondary); margin-bottom: 6px;
   }
-  .sd-text {
+  .sdb-text {
     font-size: 13px; color: var(--text); line-height: 1.5; margin: 0; white-space: pre-wrap;
   }
-  .sd-targets { display: flex; flex-wrap: wrap; gap: 4px; }
-  .sd-target {
-    font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 6px;
+  .sdb-interval-list {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 4px;
   }
-  .sd-actions {
-    display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; padding-top: 14px;
+  .sdb-interval-item {
+    font-size: 13px; color: var(--text); line-height: 1.5;
+  }
+  .sdb-interval-item::before { content: '•'; margin-right: 6px; color: var(--text-secondary); }
+  .sdb-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+  .sdb-pill {
+    font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 6px;
+  }
+  .sdb-empty { font-size: 12px; color: var(--text-secondary); font-style: italic; }
+
+  .sd-footer {
+    display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; padding-top: 14px;
     border-top: 0.5px solid var(--border);
   }
 
