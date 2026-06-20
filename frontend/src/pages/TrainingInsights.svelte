@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { trainingApi } from '$lib/api/types';
-  import type { TrainingInsights, CtlResponse, SportLoad, WeeklyLoad, TrainingPlan, WeeklyVolumeResponse } from '$lib/api/types';
+  import { trainingApi, statsApi } from '$lib/api/types';
+  import type { TrainingInsights, CtlResponse, VolumeResponse, PersonalRecordsResponse } from '$lib/api/types';
   import uPlot from 'uplot';
   import 'uplot/dist/uPlot.min.css';
   import Icon from '$lib/components/Icon.svelte';
@@ -11,20 +11,17 @@
 
   let insights = $state<TrainingInsights | null>(null);
   let ctlData = $state<CtlResponse | null>(null);
-  let plans = $state<TrainingPlan[]>([]);
-  let selectedPlanId = $state<number | null>(null);
-  let weeklyVolume = $state<WeeklyVolumeResponse | null>(null);
+  let volumeData = $state<VolumeResponse | null>(null);
+  let prData = $state<PersonalRecordsResponse | null>(null);
   let loading = $state(true);
   let error = $state('');
 
   let volumeContainer: HTMLDivElement;
-  let paceContainer: HTMLDivElement;
   let pmcContainer: HTMLDivElement;
   let sportLoadContainer: HTMLDivElement;
   let weeklyLoadContainer: HTMLDivElement;
   let acwrTrendContainer: HTMLDivElement;
   let volumeTooltip: HTMLDivElement;
-  let paceTooltip: HTMLDivElement;
   let weeklyLoadTooltip: HTMLDivElement;
   let pmcTooltip: HTMLDivElement;
   let chartTooltip: HTMLDivElement;
@@ -42,22 +39,44 @@
     other: '#8b5cf6',
   };
 
+  const prMeta = [
+    { key: 'longest_distance' as const, label: 'Longest Distance', unit: 'km', convert: (v: number) => (v / 1000).toFixed(1), color: '#3b82f6', icon: 'distance' },
+    { key: 'longest_duration' as const, label: 'Longest Duration', unit: '', convert: (v: number) => formatDuration(v), color: '#14b8a6', icon: 'duration' },
+    { key: 'highest_elevation' as const, label: 'Highest Elevation', unit: 'm', convert: (v: number) => v.toFixed(0), color: '#f97316', icon: 'elevation' },
+    { key: 'fastest_speed' as const, label: 'Fastest Avg Speed', unit: 'km/h', convert: (v: number) => (v * 3.6).toFixed(1), color: '#22c55e', icon: 'speed' },
+    { key: 'highest_hr' as const, label: 'Highest Avg HR', unit: 'bpm', convert: (v: number) => v.toFixed(0), color: '#ef4444', icon: 'heart' },
+    { key: 'max_speed' as const, label: 'Max Speed', unit: 'km/h', convert: (v: number) => (v * 3.6).toFixed(1), color: '#8b5cf6', icon: 'speed' },
+  ];
+
+  let prCards = $derived.by(() => {
+    if (!prData) return [];
+    return prMeta
+      .map(m => ({ ...m, record: (prData as PersonalRecordsResponse)[m.key] }))
+      .filter((x): x is typeof x & { record: NonNullable<typeof x.record> } => x.record !== null)
+      .map(x => ({
+        ...x,
+        record: x.record,
+        date: (() => {
+          const d = new Date(x.record.start_time);
+          return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        })(),
+      }));
+  });
+
   async function load() {
     loading = true;
     error = '';
     try {
-      const [insightsResult, ctlResult, plansResult] = await Promise.all([
+      const [insightsResult, ctlResult, volumeResult, prResult] = await Promise.all([
         trainingApi.insights(),
         trainingApi.ctl(90).catch(() => null),
-        trainingApi.listPlans().catch(() => []),
+        statsApi.volume().catch(() => null),
+        statsApi.personalRecords().catch(() => null),
       ]);
       insights = insightsResult;
       ctlData = ctlResult;
-      plans = plansResult;
-      if (plans.length > 0) {
-        selectedPlanId = plans[0].id;
-        await loadWeeklyVolume();
-      }
+      volumeData = volumeResult;
+      prData = prResult;
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to load insights';
     } finally {
@@ -65,37 +84,9 @@
     }
     setTimeout(() => {
       destroyCharts();
-      buildVolumeChart();
-      buildPaceChart();
+      buildMonthlyVolumeChart();
       buildPmcChart();
-      buildSportLoadChart();
-      buildWeeklyLoadChart();
-      buildAcwrTrendChart();
-    }, 50);
-  }
-
-  async function loadWeeklyVolume() {
-    if (!selectedPlanId) {
-      weeklyVolume = null;
-      return;
-    }
-    try {
-      weeklyVolume = await trainingApi.weeklyVolume(selectedPlanId);
-    } catch (e: unknown) {
-      console.error('Failed to load weekly volume:', e);
-      weeklyVolume = null;
-    }
-  }
-
-  async function selectPlan(planId: number | null) {
-    selectedPlanId = planId;
-    await loadWeeklyVolume();
-    setTimeout(() => {
-      destroyCharts();
-      buildVolumeChart();
-      buildPaceChart();
-      buildPmcChart();
-      buildSportLoadChart();
+      buildSportDistribution();
       buildWeeklyLoadChart();
       buildAcwrTrendChart();
     }, 50);
@@ -119,34 +110,25 @@
     return `${m}m`;
   }
 
-  function buildVolumeChart() {
-    if (!volumeContainer || !insights || insights.weekly_volume.length === 0) return;
+  function buildMonthlyVolumeChart() {
+    if (!volumeContainer || !volumeData || volumeData.monthly.length === 0) return;
     volumeContainer.innerHTML = '';
 
-    const data = insights.weekly_volume;
+    const data = volumeData.monthly;
     const xData = data.map(d => {
-      const parts = d.week_start.split('-');
-      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime() / 1000;
+      const parts = d.month.split('-');
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1).getTime() / 1000;
     });
     const distData = data.map(d => d.distance_m / 1000);
     const durData = data.map(d => d.duration_s / 3600);
-
-    // Compute target values from weekly volume data
-    let targetDist = 0;
-    let targetDur = 0;
-    if (weeklyVolume && weeklyVolume.weeks.length > 0) {
-      const weeksWithTarget = weeklyVolume.weeks.filter(w => w.total_planned_distance_m > 0 || w.total_planned_duration_s > 0);
-      if (weeksWithTarget.length > 0) {
-        targetDist = weeksWithTarget.reduce((s, w) => s + w.total_planned_distance_m, 0) / weeksWithTarget.length / 1000;
-        targetDur = weeksWithTarget.reduce((s, w) => s + w.total_planned_duration_s, 0) / weeksWithTarget.length / 3600;
-      }
-    }
 
     const chartData: uPlot.AlignedData = [
       new Float64Array(xData),
       new Float64Array(distData),
       new Float64Array(durData),
     ];
+
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
     const chart = new uPlot({
       width: volumeContainer.clientWidth,
@@ -159,7 +141,7 @@
           stroke: '#888',
           values: (_u, ticks) => ticks.map(t => {
             const d = new Date(t * 1000);
-            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+            return months[d.getMonth()];
           }),
           grid: { show: false },
         },
@@ -167,60 +149,28 @@
       ],
       series: [
         {},
-        { stroke: '#3b82f6', fill: 'rgba(59,130,246,0.15)', width: 2, points: { show: false } },
-        { stroke: '#22c55e', fill: 'rgba(34,197,94,0.1)', width: 2, points: { show: false }, scale: 'y2' },
+        {
+          label: 'Distance',
+          stroke: '#3b82f6',
+          fill: 'rgba(59,130,246,0.2)',
+          width: 1.5,
+          points: { show: false },
+          paths: (uPlot.paths.bars as NonNullable<typeof uPlot.paths.bars>)({ size: [0.6, 100] }),
+        },
+        {
+          label: 'Duration',
+          stroke: '#22c55e',
+          width: 2,
+          points: { show: false },
+          scale: 'y2',
+        },
       ],
       scales: {
         x: { time: false },
-        y: { range: (u) => {
-          const maxVal = Math.max((u.series[1].max ?? 10), targetDist);
-          return [0, maxVal * 1.1];
-        }},
-        y2: { range: (u) => {
-          const maxVal = Math.max((u.series[2].max ?? 1), targetDur);
-          return [0, maxVal * 1.1];
-        }, side: 1 },
+        y: { range: (u) => [0, (u.series[1].max ?? 10) * 1.1] },
+        y2: { range: (u) => [0, (u.series[2].max ?? 1) * 1.1], side: 1 } as uPlot.Scale,
       },
       hooks: {
-        draw: [(u: uPlot) => {
-          const ctx = u.ctx;
-          // Draw target distance line
-          if (targetDist > 0) {
-            const y = u.valToPos(targetDist, 'y', true);
-            ctx.save();
-            ctx.strokeStyle = '#3b82f680';
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([6, 4]);
-            ctx.beginPath();
-            ctx.moveTo(u.bbox.left, y);
-            ctx.lineTo(u.bbox.left + u.bbox.width, y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.fillStyle = '#3b82f6';
-            ctx.font = '11px sans-serif';
-            ctx.textAlign = 'right';
-            ctx.fillText(`${targetDist.toFixed(0)} km`, u.bbox.left + u.bbox.width - 4, y - 4);
-            ctx.restore();
-          }
-          // Draw target duration line
-          if (targetDur > 0) {
-            const y = u.valToPos(targetDur, 'y2', true);
-            ctx.save();
-            ctx.strokeStyle = '#22c55e80';
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([6, 4]);
-            ctx.beginPath();
-            ctx.moveTo(u.bbox.left, y);
-            ctx.lineTo(u.bbox.left + u.bbox.width, y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.fillStyle = '#22c55e';
-            ctx.font = '11px sans-serif';
-            ctx.textAlign = 'left';
-            ctx.fillText(`${targetDur.toFixed(1)} h`, u.bbox.left + 4, y - 4);
-            ctx.restore();
-          }
-        }],
         setCursor: [(u: uPlot) => {
           if (u.cursor.idx != null) showTooltip(u.cursor.idx, u, 'volume');
         }],
@@ -232,77 +182,6 @@
       if (volumeContainer) chart.setSize({ width: volumeContainer.clientWidth, height: 250 });
     });
     ro.observe(volumeContainer);
-  }
-
-  function buildPaceChart() {
-    if (!paceContainer || !insights) return;
-    paceContainer.innerHTML = '';
-
-    const trends = insights.pace_trends;
-    const sports = Object.keys(trends).filter(s => trends[s].some(p => p.avg_speed !== null));
-    if (sports.length === 0) return;
-
-    const allWeeks = insights.weekly_volume.map(d => {
-      const parts = d.week_start.split('-');
-      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime() / 1000;
-    });
-
-    const series: uPlot.Series[] = [
-      {},
-      ...sports.map(sport => ({
-        label: sport,
-        stroke: sportColors[sport] ?? sportColors.other,
-        width: 2,
-        points: { show: false },
-      })),
-    ];
-
-    const chartData: uPlot.AlignedData = [
-      new Float64Array(allWeeks),
-      ...sports.map(sport => {
-        const points = trends[sport];
-        return new Float64Array(points.map(p => p.avg_speed ?? 0));
-      }),
-    ];
-
-    const chart = new uPlot({
-      width: paceContainer.clientWidth,
-      height: 250,
-      padding: [10, 10, 30, 50],
-      cursor: { points: { show: false } },
-      legend: { show: false },
-      axes: [
-        {
-          stroke: '#888',
-          values: (_u, ticks) => ticks.map(t => {
-            const d = new Date(t * 1000);
-            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-          }),
-          grid: { show: false },
-        },
-        { stroke: '#888', grid: { stroke: '#eee' } },
-      ],
-      series,
-      scales: {
-        x: { time: false },
-        y: { range: (u) => {
-          const vals = u.series.slice(1).flatMap(s => (s.max ?? 0) > 0 ? [s.max!] : []);
-          const max = vals.length > 0 ? Math.max(...vals) : 10;
-          return [0, max * 1.1];
-        }},
-      },
-      hooks: {
-        setCursor: [(u: uPlot) => {
-          if (u.cursor.idx != null) showTooltip(u.cursor.idx, u, 'pace');
-        }],
-      },
-    }, chartData, paceContainer);
-    charts.push(chart);
-
-    const ro = new ResizeObserver(() => {
-      if (paceContainer) chart.setSize({ width: paceContainer.clientWidth, height: 250 });
-    });
-    ro.observe(paceContainer);
   }
 
   function buildPmcChart() {
@@ -379,30 +258,29 @@
     ro.observe(pmcContainer);
   }
 
-  function buildSportLoadChart() {
-    if (!sportLoadContainer || !ctlData || ctlData.sport_load.length === 0) return;
+  function buildSportDistribution() {
+    if (!sportLoadContainer || !volumeData || volumeData.by_sport.length === 0) return;
     sportLoadContainer.innerHTML = '';
 
-    const data = ctlData.sport_load;
-    const totalLoad = data.reduce((s, d) => s + d.total_load, 0);
-    if (totalLoad <= 0) return;
+    const data = volumeData.by_sport;
+    const totalDist = data.reduce((s, d) => s + d.distance_m, 0);
+    if (totalDist <= 0) return;
 
-    const sorted = [...data].sort((a, b) => b.total_load - a.total_load);
+    const sorted = [...data].sort((a, b) => b.distance_m - a.distance_m);
     
-    // Build horizontal bar chart
     const barHeight = 28;
     const gap = 6;
     const labelWidth = 60;
     const chartHeight = sorted.length * (barHeight + gap);
-    const maxLoad = Math.max(...sorted.map(d => d.total_load));
+    const maxDist = sorted[0].distance_m;
     
     const containerWidth = sportLoadContainer.clientWidth;
-    const barAreaWidth = containerWidth - labelWidth - 60;
+    const barAreaWidth = containerWidth - labelWidth - 80;
 
     let html = '';
     sorted.forEach((d, i) => {
-      const pct = ((d.total_load / totalLoad) * 100).toFixed(1);
-      const barWidth = maxLoad > 0 ? (d.total_load / maxLoad) * barAreaWidth : 0;
+      const pct = ((d.distance_m / totalDist) * 100).toFixed(1);
+      const barWidth = maxDist > 0 ? (d.distance_m / maxDist) * barAreaWidth : 0;
       const color = sportColors[d.sport_type] ?? sportColors.other;
       const y = i * (barHeight + gap);
       
@@ -411,7 +289,8 @@
       html += `<div class="sport-bar-track">`;
       html += `<div class="sport-bar-fill" style="width: ${barWidth}px; background: ${color}"></div>`;
       html += `</div>`;
-      html += `<span class="sport-bar-value">${pct}%</span>`;
+      html += `<span class="sport-bar-value">${(d.distance_m / 1000).toFixed(1)} km</span>`;
+      html += `<span class="sport-bar-sub">${pct}%</span>`;
       html += `</div>`;
     });
 
@@ -459,7 +338,7 @@
           fill: 'rgba(139,92,246,0.2)',
           width: 1.5,
           points: { show: false },
-          paths: uPlot.paths.bars({ size: [0.6, 100] }),
+          paths: (uPlot.paths.bars as NonNullable<typeof uPlot.paths.bars>)({ size: [0.6, 100] }),
         },
       ],
       scales: {
@@ -560,8 +439,8 @@
     ro.observe(acwrTrendContainer);
   }
 
-  function showTooltip(idx: number, activeChart: uPlot, type: 'pmc' | 'acwr' | 'volume' | 'pace' | 'weeklyLoad') {
-    const tooltip = type === 'pmc' ? pmcTooltip : type === 'acwr' ? chartTooltip : type === 'volume' ? volumeTooltip : type === 'pace' ? paceTooltip : weeklyLoadTooltip;
+  function showTooltip(idx: number, activeChart: uPlot, type: 'pmc' | 'acwr' | 'volume' | 'weeklyLoad') {
+    const tooltip = type === 'pmc' ? pmcTooltip : type === 'acwr' ? chartTooltip : type === 'volume' ? volumeTooltip : weeklyLoadTooltip;
     if (!tooltip) return;
 
     let html = '';
@@ -603,32 +482,18 @@
           html += '</div>';
         }
       }
-    } else if (type === 'volume' && insights && idx < insights.weekly_volume.length) {
-      const week = insights.weekly_volume[idx];
-      const parts = week.week_start.split('-');
-      const dateStr = `Week of ${parts[2]}/${parts[1]}`;
+    } else if (type === 'volume' && volumeData && idx < volumeData.monthly.length) {
+      const month = volumeData.monthly[idx];
+      const parts = month.month.split('-');
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const dateStr = `${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
       
       html = `<div class="tooltip-date">${dateStr}</div>`;
       html += '<div class="tooltip-metrics">';
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#3b82f6"></span>Distance: ${(week.distance_m / 1000).toFixed(1)} km</div>`;
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#22c55e"></span>Duration: ${formatDuration(week.duration_s)}</div>`;
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#8b5cf6"></span>Activities: ${week.count}</div>`;
-      html += '</div>';
-    } else if (type === 'pace' && insights && idx < insights.weekly_volume.length) {
-      const week = insights.weekly_volume[idx];
-      const parts = week.week_start.split('-');
-      const dateStr = `Week of ${parts[2]}/${parts[1]}`;
-      
-      html = `<div class="tooltip-date">${dateStr}</div>`;
-      html += '<div class="tooltip-metrics">';
-      const trends = insights.pace_trends;
-      Object.keys(trends).forEach(sport => {
-        if (idx < trends[sport].length && trends[sport][idx].avg_speed !== null) {
-          const speed = trends[sport][idx].avg_speed!;
-          const color = sportColors[sport] ?? sportColors.other;
-          html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:${color}"></span>${sport}: ${speed.toFixed(1)} m/s</div>`;
-        }
-      });
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#3b82f6"></span>Distance: ${(month.distance_m / 1000).toFixed(1)} km</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#22c55e"></span>Duration: ${formatDuration(month.duration_s)}</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#f97316"></span>Elevation: ${month.elevation_m.toFixed(0)} m</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#8b5cf6"></span>Activities: ${month.count}</div>`;
       html += '</div>';
     } else if (type === 'weeklyLoad' && ctlData && idx < ctlData.weekly_loads.length) {
       const load = ctlData.weekly_loads[idx];
@@ -706,14 +571,6 @@
   {:else if insights}
     <div class="page-header">
       <h1>Training Insights</h1>
-      {#if plans.length > 0}
-        <div class="plan-selector">
-          <button class="plan-tab" class:active={selectedPlanId === null} onclick={() => selectPlan(null)}>All Plans</button>
-          {#each plans as p}
-            <button class="plan-tab" class:active={selectedPlanId === p.id} onclick={() => selectPlan(p.id)}>{p.name}</button>
-          {/each}
-        </div>
-      {/if}
     </div>
 
     <!-- Section 1: Overview -->
@@ -823,56 +680,60 @@
 
     <!-- Section 3: Volume & Trends -->
     <div class="section">
-      <h2 class="section-title">Volume & Trends</h2>
+      <h2 class="section-title">Volume & Performance</h2>
       <div class="chart-row">
         <div class="chart-card half">
           <div class="chart-header">
-            <h3>Weekly Volume</h3>
+            <h3>Monthly Volume</h3>
             <div class="volume-legend">
               <span class="legend-item"><span class="legend-dot" style="background: #3b82f6"></span>Distance (km)</span>
               <span class="legend-item"><span class="legend-dot" style="background: #22c55e"></span>Duration (h)</span>
             </div>
           </div>
-          <div
-            class="chart-container"
-            bind:this={volumeContainer}
-            onmouseleave={() => hideTooltip(volumeTooltip)}
-            onmousemove={handleMouseMove}
-          ></div>
-          <div bind:this={volumeTooltip} class="chart-tooltip" style="display: none;"></div>
+          {#if volumeData && volumeData.monthly.length > 0}
+            <div
+              class="chart-container"
+              bind:this={volumeContainer}
+              onmouseleave={() => hideTooltip(volumeTooltip)}
+              onmousemove={handleMouseMove}
+            ></div>
+            <div bind:this={volumeTooltip} class="chart-tooltip" style="display: none;"></div>
+          {:else}
+            <p class="no-data">Upload activities to see monthly volume.</p>
+          {/if}
         </div>
         <div class="chart-card half">
           <div class="chart-header">
-            <h3>Speed Trends</h3>
+            <h3>Personal Records</h3>
           </div>
-          {#if Object.keys(insights.pace_trends).length === 0}
-            <p class="no-data">Not enough data for speed trends.</p>
-          {:else}
-            <div
-              class="chart-container"
-              bind:this={paceContainer}
-              onmouseleave={() => hideTooltip(paceTooltip)}
-              onmousemove={handleMouseMove}
-            ></div>
-            <div bind:this={paceTooltip} class="chart-tooltip" style="display: none;"></div>
-            <div class="sport-legend">
-              {#each Object.entries(sportColors) as [sport, color]}
-                {#if insights.pace_trends[sport]}
-                  <span class="legend-item">
-                    <span class="legend-dot" style="background: {color}"></span>
-                    {sport}
-                  </span>
-                {/if}
+          {#if prCards.length > 0}
+            <div class="pr-grid">
+              {#each prCards as card}
+                <div class="pr-card" style="border-color: {card.color}30">
+                  <div class="pr-icon" style="background: {card.color}15; color: {card.color}">
+                    <Icon name={card.icon} size={18} />
+                  </div>
+                  <div class="pr-body">
+                    <div class="pr-label">{card.label}</div>
+                    <div class="pr-value">{card.convert(card.record.value)} <span class="pr-unit">{card.unit}</span></div>
+                    <div class="pr-meta">
+                      <span class="pr-name">{card.record.name}</span>
+                      <span class="pr-date">{card.date}</span>
+                    </div>
+                  </div>
+                </div>
               {/each}
             </div>
+          {:else}
+            <p class="no-data">Complete your first activity to set personal records.</p>
           {/if}
         </div>
       </div>
 
-      {#if ctlData && ctlData.sport_load.length > 0}
+      {#if volumeData && volumeData.by_sport.length > 0}
         <div class="chart-card">
           <div class="chart-header">
-            <h3>Training Load by Sport</h3>
+            <h3>Activity by Sport</h3>
           </div>
           <div class="sport-load-chart" bind:this={sportLoadContainer}></div>
         </div>
@@ -942,29 +803,7 @@
     flex-wrap: wrap;
     gap: 12px;
   }
-  .plan-selector {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-  .plan-tab {
-    padding: 5px 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface);
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  .plan-tab:hover {
-    background: var(--hover);
-  }
-  .plan-tab.active {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-  }
+
   h1 {
     font-size: var(--font-size-2xl, 22px);
     font-weight: var(--font-weight-medium, 500);
@@ -1067,7 +906,7 @@
   .chart-container {
     width: 100%;
   }
-  .pmc-legend, .volume-legend, .sport-legend {
+  .pmc-legend, .volume-legend {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
@@ -1142,8 +981,16 @@
     transition: width 0.3s ease;
   }
   :global(.sport-bar-value) {
-    width: 45px;
+    width: 50px;
     font-size: var(--font-size-sm, 12px);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--text);
+    text-align: right;
+    flex-shrink: 0;
+  }
+  :global(.sport-bar-sub) {
+    width: 40px;
+    font-size: var(--font-size-xs, 11px);
     font-weight: var(--font-weight-regular, 400);
     color: var(--text-secondary);
     text-align: right;
@@ -1259,6 +1106,70 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .pr-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .pr-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid;
+    border-radius: 8px;
+    background: var(--card-bg, var(--surface));
+  }
+  .pr-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .pr-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .pr-label {
+    font-size: var(--font-size-xs, 11px);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
+  }
+  .pr-value {
+    font-size: var(--font-size-xl, 16px);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .pr-unit {
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-regular, 400);
+  }
+  .pr-meta {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 2px;
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pr-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pr-date {
     flex-shrink: 0;
   }
   .no-data {
