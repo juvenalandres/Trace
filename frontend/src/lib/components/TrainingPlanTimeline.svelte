@@ -292,9 +292,16 @@
                     {/each}
                   </div>
                 {/if}
-                {#if s.sport_type && !s.rest_day}
-                  <span class="sport-tag sport-{s.sport_type}">{s.sport_type}</span>
-                {/if}
+                <div class="session-footer">
+                  {#if s.sport_type && !s.rest_day}
+                    <span class="sport-tag sport-{s.sport_type}">{s.sport_type}</span>
+                  {/if}
+                  {#if s.activity_id || s.status === 'completed'}
+                    <span class="done-badge">Done</span>
+                  {:else if s.status === 'skipped'}
+                    <span class="skipped-badge">Skipped</span>
+                  {/if}
+                </div>
               </div>
             {/each}
           </div>
@@ -509,6 +516,18 @@
   .sport-hike { background: #f9731620; color: #f97316; }
   .sport-walk { background: #f59e0b20; color: #f59e0b; }
   .sport-other { background: #8b5cf620; color: #8b5cf6; }
+
+  .session-footer {
+    display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 4px;
+  }
+  .done-badge {
+    font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px;
+    background: #dcfce7; color: #166534;
+  }
+  .skipped-badge {
+    font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px;
+    background: #fef3c7; color: #92400e;
+  }
 
   .sd {
     min-width: 380px; max-width: 520px; font-family: var(--font-sans);
