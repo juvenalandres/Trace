@@ -78,9 +78,6 @@
 
   function handleEndSelect(lat: number, lng: number) {
     endCoord = [lat, lng];
-    if (startCoord) {
-      distance = Math.round(haversine(startCoord[0], startCoord[1], lat, lng));
-    }
   }
 
   function resetPoints() {
@@ -148,7 +145,7 @@
     end: [number, number],
     polylineStr: string,
     profileStr: string,
-  ): { dists: Float64Array; eles: Float64Array; gain: number; coords: [number, number][] } | null {
+  ): { dists: Float64Array; eles: Float64Array; gain: number; coords: [number, number][]; routeDistance: number } | null {
     const coords = decodePolyline(polylineStr);
     if (coords.length < 2) return null;
 
@@ -183,12 +180,14 @@
       eles: new Float64Array(seg.map(p => p.ele)),
       gain,
       coords: coords.slice(lo, hi + 1),
+      routeDistance: dEnd - dStart,
     };
   }
 
   async function loadRoutesElevation(start: [number, number], end: [number, number]) {
     elevationLoading = true;
     elevationError = '';
+    distance = null;
 
     try {
       let bestPolyline = '';
@@ -231,6 +230,13 @@
       };
       elevationGain = resp.elevation_gain_m;
       segmentCoords = segCoords;
+
+      // Compute actual route distance along the segment coords
+      let routeDist = 0;
+      for (let i = 1; i < segCoords.length; i++) {
+        routeDist += haversine(segCoords[i - 1][0], segCoords[i - 1][1], segCoords[i][0], segCoords[i][1]);
+      }
+      distance = Math.round(routeDist);
     } catch (e: unknown) {
       elevationError = e instanceof Error ? e.message : 'Failed to load elevation';
     } finally {
@@ -248,6 +254,7 @@
       elevationLoading = false;
       elevationError = '';
       segmentCoords = [];
+      distance = null;
       return;
     }
 
@@ -259,6 +266,7 @@
       elevationChartData = result ? { dists: result.dists, eles: result.eles } : null;
       elevationGain = result?.gain ?? null;
       segmentCoords = result?.coords ?? [];
+      distance = result ? Math.round(result.routeDistance) : null;
       return;
     }
 
