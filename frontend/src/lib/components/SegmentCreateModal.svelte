@@ -169,6 +169,18 @@
     }
     if (seg.length < 2) return null;
 
+    // Smooth elevation with centered moving average (window=5)
+    const rawEles = seg.map(p => p.ele);
+    const halfWin = 2;
+    for (let i = 0; i < rawEles.length; i++) {
+      let sum = 0, count = 0;
+      for (let j = Math.max(0, i - halfWin); j <= Math.min(rawEles.length - 1, i + halfWin); j++) {
+        sum += rawEles[j];
+        count++;
+      }
+      seg[i].ele = sum / count;
+    }
+
     let gain = 0;
     for (let i = 1; i < seg.length; i++) {
       const diff = seg[i].ele - seg[i - 1].ele;

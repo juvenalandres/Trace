@@ -79,24 +79,48 @@
     highest_hr: { label: 'Highest avg HR', icon: 'heart', color: '#ec4899', bg: '#ec489920', unit: 'bpm', format: (v) => `${Math.round(v)}` },
   };
 
+  function backfillMonths(monthly: VolumeResponse['monthly']) {
+    if (monthly.length === 0) return monthly;
+    const first = monthly[0].month;
+    const last = monthly[monthly.length - 1].month;
+    const [fy, fm] = first.split('-').map(Number);
+    const [ly, lm] = last.split('-').map(Number);
+    const dataMap = new Map(monthly.map(m => [m.month, m]));
+    const result: VolumeResponse['monthly'] = [];
+    let y = fy, m = fm;
+    while (y < ly || (y === ly && m <= lm)) {
+      const key = `${y}-${String(m).padStart(2, '0')}`;
+      const existing = dataMap.get(key);
+      if (existing) {
+        result.push(existing);
+      } else {
+        result.push({ month: key, count: 0, distance_m: 0, duration_s: 0, elevation_m: 0, calories: 0 });
+      }
+      m++;
+      if (m > 12) { m = 1; y++; }
+    }
+    return result;
+  }
+
   function buildChart() {
     if (!chartContainer || !volume || volume.monthly.length === 0) return;
 
     chart?.destroy();
     chart = null;
 
-    const months = volume.monthly.map(m => {
+    const filled = backfillMonths(volume.monthly);
+    const months = filled.map(m => {
       const [y, mo] = m.month.split('-');
       return new Date(parseInt(y), parseInt(mo) - 1, 1).getTime() / 1000;
     });
-    const distances = volume.monthly.map(m => m.distance_m / 1000);
+    const distances = filled.map(m => m.distance_m / 1000);
 
     const plotData: uPlot.AlignedData = [
       new Float64Array(months),
       new Float64Array(distances),
     ];
 
-    const multiYear = new Set(volume.monthly.map(m => m.month.split('-')[0])).size > 1;
+    const multiYear = new Set(filled.map(m => m.month.split('-')[0])).size > 1;
 
     chart = new uPlot({
       width: chartContainer.clientWidth,
@@ -143,8 +167,7 @@
           stroke: '#378ADD',
           fill: '#E6F1FB',
           width: 1.5,
-          points: { show: false },
-          spline: 0.3,
+          points: { size: 5, fill: '#378ADD', stroke: '#fff', width: 1.5 },
         },
       ],
       legend: { show: false },
@@ -156,9 +179,7 @@
               const val = distances[idx];
               if (val != null) {
                 const d = new Date(months[idx] * 1000);
-                const dateStr = multiYear
-                  ? d.toLocaleString('en', { month: 'short', year: 'numeric' })
-                  : d.toLocaleString('en', { month: 'short', day: 'numeric' });
+                const dateStr = d.toLocaleString('en', { month: 'short', year: 'numeric' });
                 tooltipEl.innerHTML = `${dateStr} · <strong>${val.toFixed(1)} km</strong>`;
                 tooltipEl.style.display = 'block';
                 let finalLeft = mouseX + 12;
