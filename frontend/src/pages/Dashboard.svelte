@@ -4,6 +4,7 @@
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorBanner from '$lib/components/ErrorBanner.svelte';
   import MonthHeatmap from '$lib/components/MonthHeatmap.svelte';
+  import SportBreakdown from '$lib/components/SportBreakdown.svelte';
   import { statsApi, userApi, activitiesApi } from '$lib/api/types';
   import type { DashboardResponse, PeriodStats, User, HeatmapDay, VolumeResponse } from '$lib/api/types';
 
@@ -32,9 +33,9 @@
 
   const sportIcons: Record<string, string> = {
     run: 'activity',
-    ride: 'activity',
-    swim: 'activity',
-    hike: 'activity',
+    ride: 'ride',
+    swim: 'swim',
+    hike: 'hike',
     walk: 'activity',
     other: 'activity',
   };
@@ -138,8 +139,12 @@
     dashboard ? dashboard[`prev_${selectedPeriod}` as keyof DashboardResponse] as PeriodStats | null ?? null : null
   );
 
-  function calcTrend(current: number, prev: number | null): { value: number; positive: boolean } | null {
-    if (prev === null || prev === 0) return null;
+  function calcTrend(current: number, prev: number | null): { value: number; positive: boolean; absolute?: boolean } | null {
+    if (prev === null) return null;
+    if (prev === 0) {
+      if (current === 0) return null;
+      return { value: current, positive: true, absolute: true };
+    }
     const pct = ((current - prev) / prev) * 100;
     return { value: Math.abs(Math.round(pct)), positive: pct >= 0 };
   }
@@ -162,10 +167,6 @@
   );
   let elevationTrend = $derived(
     currentStats && prevPeriod ? calcTrend(currentStats.elevation_gain, prevPeriod.elevation_gain) : null
-  );
-
-  let totalSportDistance = $derived(
-    dashboard ? dashboard.by_sport.reduce((s, sp) => s + sp.distance_m, 0) : 0
   );
 
   let recentActivities = $derived(
@@ -224,7 +225,7 @@
           {#if distanceTrend}
             <div class="metric-trend" class:positive={distanceTrend.positive} class:negative={!distanceTrend.positive}>
               <span class="trend-arrow">{distanceTrend.positive ? '↑' : '↓'}</span>
-              {distanceTrend.value}% vs {getPrevPeriodLabel(selectedPeriod)}
+              {distanceTrend.absolute ? `${formatKm(distanceTrend.value)} km` : `${distanceTrend.value}%`} vs {getPrevPeriodLabel(selectedPeriod)}
             </div>
           {:else}
             <div class="metric-trend muted">-</div>
@@ -245,7 +246,7 @@
           {#if durationTrend}
             <div class="metric-trend" class:positive={durationTrend.positive} class:negative={!durationTrend.positive}>
               <span class="trend-arrow">{durationTrend.positive ? '↑' : '↓'}</span>
-              {durationTrend.value}% vs {getPrevPeriodLabel(selectedPeriod)}
+              {durationTrend.absolute ? formatDurationShort(durationTrend.value) : `${durationTrend.value}%`} vs {getPrevPeriodLabel(selectedPeriod)}
             </div>
           {:else}
             <div class="metric-trend muted">-</div>
@@ -266,7 +267,7 @@
           {#if elevationTrend}
             <div class="metric-trend" class:positive={elevationTrend.positive} class:negative={!elevationTrend.positive}>
               <span class="trend-arrow">{elevationTrend.positive ? '↑' : '↓'}</span>
-              {elevationTrend.value}% vs {getPrevPeriodLabel(selectedPeriod)}
+              {elevationTrend.absolute ? `${elevationTrend.value} m` : `${elevationTrend.value}%`} vs {getPrevPeriodLabel(selectedPeriod)}
             </div>
           {:else}
             <div class="metric-trend muted">-</div>
@@ -308,23 +309,9 @@
           <h3>By sport</h3>
         </div>
         {#if dashboard.by_sport.length > 0}
-          <div class="sport-rows">
-            {#each dashboard.by_sport as sport}
-              {@const pct = totalSportDistance > 0 ? (sport.distance_m / totalSportDistance * 100) : 0}
-              <div class="sport-row">
-                <div class="sport-icon" style="background: {sportColors[sport.sport_type] ?? sportColors.other}20; color: {sportColors[sport.sport_type] ?? sportColors.other}">
-                  <Icon name={sportIcons[sport.sport_type] ?? 'activity'} size={16} />
-                </div>
-                <span class="sport-name">{sport.sport_type}</span>
-                <div class="sport-bar-track">
-                  <div class="sport-bar-fill" style="width: {pct}%; background: {sportColors[sport.sport_type] ?? sportColors.other}"></div>
-                </div>
-                <span class="sport-stats">{formatKm(sport.distance_m)} km · {formatDurationShort(sport.duration_s)}</span>
-              </div>
-            {/each}
-          </div>
+          <SportBreakdown data={dashboard.by_sport} />
         {:else}
-          <p class="empty-text">No activities yet</p>
+          <p class="empty-text">No activity data yet</p>
         {/if}
       </div>
 
@@ -564,54 +551,6 @@
   }
   .view-all-link:hover {
     text-decoration: underline;
-  }
-
-  /* By Sport */
-  .sport-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .sport-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .sport-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .sport-name {
-    font-size: 13px;
-    font-weight: 400;
-    color: var(--text);
-    width: 40px;
-    text-transform: capitalize;
-  }
-  .sport-bar-track {
-    flex: 1;
-    height: 6px;
-    background: var(--bg);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-  .sport-bar-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.3s ease;
-  }
-  .sport-stats {
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    min-width: 100px;
-    text-align: right;
   }
 
   /* Recent Activities Table */

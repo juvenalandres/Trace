@@ -32,7 +32,7 @@
   }
 
   function sportIcon(type: string): string {
-    const map: Record<string, string> = { run: 'activity', ride: 'gear', swim: 'activity', hike: 'activity', walk: 'activity' };
+    const map: Record<string, string> = { run: 'activity', ride: 'ride', swim: 'swim', hike: 'hike', walk: 'activity' };
     return map[type] || 'activity';
   }
 

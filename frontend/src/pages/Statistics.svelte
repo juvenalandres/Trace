@@ -40,10 +40,10 @@
   };
 
   const sportIcons: Record<string, string> = {
-    ride: 'activity',
+    ride: 'ride',
     run: 'activity',
-    swim: 'activity',
-    hike: 'activity',
+    swim: 'swim',
+    hike: 'hike',
     walk: 'activity',
     other: 'activity',
   };

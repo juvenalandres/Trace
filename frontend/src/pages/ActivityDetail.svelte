@@ -38,6 +38,11 @@
   let editGearId = $state<number | null>(null);
   let showSegmentModal = $state(false);
 
+  function sportIcon(type: string): string {
+    const map: Record<string, string> = { run: 'activity', ride: 'ride', swim: 'swim', hike: 'hike', walk: 'activity' };
+    return map[type] || 'activity';
+  }
+
   function zoneToRanges(zone: UserZone | null): { min: number; max: number }[] | undefined {
     if (!zone) return undefined;
     const ranges: { min: number; max: number }[] = [];
@@ -184,7 +189,7 @@
     <div class="header">
       <div class="title-row">
         <span class="sport-icon">
-          <Icon name="activity" size={24} />
+          <Icon name={sportIcon(activity.sport_type)} size={24} />
         </span>
         <h1>{activity.name}</h1>
       </div>
