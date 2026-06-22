@@ -5,7 +5,7 @@
   import ErrorBanner from '$lib/components/ErrorBanner.svelte';
   import MonthHeatmap from '$lib/components/MonthHeatmap.svelte';
   import { statsApi, userApi, activitiesApi } from '$lib/api/types';
-  import type { DashboardResponse, PeriodStats, User, HeatmapDay } from '$lib/api/types';
+  import type { DashboardResponse, PeriodStats, User, HeatmapDay, VolumeResponse } from '$lib/api/types';
 
   interface Props {
     onNavigate?: (page: string, id?: number) => void;
@@ -16,6 +16,7 @@
   let dashboard = $state<DashboardResponse | null>(null);
   let user = $state<User | null>(null);
   let heatmapData = $state<HeatmapDay[]>([]);
+  let volumeData = $state<VolumeResponse | null>(null);
   let loading = $state(true);
   let error = $state('');
   let selectedPeriod = $state<'week' | 'month' | 'all_time'>('month');
@@ -42,13 +43,15 @@
     loading = true;
     error = '';
     try {
-      const [dash, hm, userData] = await Promise.all([
+      const [dash, hm, vol, userData] = await Promise.all([
         statsApi.dashboard(),
         statsApi.heatmap(),
+        statsApi.volume(),
         userApi.me().catch(() => null),
       ]);
       dashboard = dash;
       heatmapData = hm;
+      volumeData = vol;
       user = userData;
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to load dashboard';
@@ -110,6 +113,21 @@
     const d = new Date(iso);
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${d.getDate()} ${months[d.getMonth()]}`;
+  }
+
+  function sparklinePath(data: number[], w: number, h: number): string {
+    if (data.length < 2) return '';
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+    const pad = 2;
+    const stepX = w / (data.length - 1);
+    const pts = data.map((v, i) => {
+      const x = i * stepX;
+      const y = h - ((v - min) / range) * (h - pad * 2) - pad;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    return `M${pts.join(' L')}`;
   }
 
   let currentStats = $derived(
@@ -211,6 +229,11 @@
           {:else}
             <div class="metric-trend muted">-</div>
           {/if}
+          <div class="sparkline-wrap">
+            <svg viewBox="0 0 100 16" preserveAspectRatio="none">
+              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.distance_m), 100, 16) : ''} stroke="#3b82f6" stroke-width="1.5" fill="none" />
+            </svg>
+          </div>
         </div>
 
         <div class="dash-metric-card">
@@ -227,6 +250,11 @@
           {:else}
             <div class="metric-trend muted">-</div>
           {/if}
+          <div class="sparkline-wrap">
+            <svg viewBox="0 0 100 16" preserveAspectRatio="none">
+              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.duration_s), 100, 16) : ''} stroke="#14b8a6" stroke-width="1.5" fill="none" />
+            </svg>
+          </div>
         </div>
 
         <div class="dash-metric-card">
@@ -243,6 +271,11 @@
           {:else}
             <div class="metric-trend muted">-</div>
           {/if}
+          <div class="sparkline-wrap">
+            <svg viewBox="0 0 100 16" preserveAspectRatio="none">
+              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.elevation_m), 100, 16) : ''} stroke="#f59e0b" stroke-width="1.5" fill="none" />
+            </svg>
+          </div>
         </div>
 
         <div class="dash-metric-card">
@@ -257,6 +290,11 @@
             {:else}
               -
             {/if}
+          </div>
+          <div class="sparkline-wrap">
+            <svg viewBox="0 0 100 16" preserveAspectRatio="none">
+              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.count), 100, 16) : ''} stroke="#f97316" stroke-width="1.5" fill="none" />
+            </svg>
           </div>
         </div>
       </div>
@@ -488,6 +526,15 @@
   }
   .trend-arrow {
     font-weight: 500;
+  }
+  .sparkline-wrap {
+    margin-top: 10px;
+    height: 16px;
+  }
+  .sparkline-wrap svg {
+    width: 100%;
+    height: 100%;
+    display: block;
   }
 
   /* Two Column Row */

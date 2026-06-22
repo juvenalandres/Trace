@@ -27,7 +27,7 @@ from trace_app.config import settings
 from trace_app.database import async_session, get_db
 from trace_app.limiter import limiter
 from trace_app.logging import request_id_var, user_id_var, setup_logging
-from trace_app.models import Activity, ActivityStats, Gear, Lap, Route, User, UserZone
+from trace_app.models import Activity, ActivityStats, Gear, Lap, Route, SegmentEffort, User, UserZone
 from trace_app.models.training_plan import TrainingPlan
 from trace_app.models.training_session import TrainingSession
 from trace_app.models.training_block import TrainingBlock
@@ -766,6 +766,12 @@ async def delete_activity(
     activity = result.scalar_one_or_none()
     if not activity:
         raise HTTPException(status_code=404, detail="Activity not found")
+
+    # Delete segment efforts referencing this activity
+    effort_q = select(SegmentEffort).where(SegmentEffort.activity_id == activity_id)
+    efforts = (await db.execute(effort_q)).scalars().all()
+    for e in efforts:
+        await db.delete(e)
 
     # Unlink any training sessions linked to this activity
     session_q = select(TrainingSession).where(TrainingSession.activity_id == activity_id)
