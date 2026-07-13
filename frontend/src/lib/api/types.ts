@@ -17,6 +17,14 @@ export interface User {
   is_admin: boolean;
 }
 
+export interface DistanceSplit {
+  split_km: number;
+  cumulative_time_s: number;
+  cumulative_speed_kmh: number;
+  segment_time_s: number;
+  segment_speed_kmh: number;
+}
+
 export interface ActivityStats {
   distance_m: number | null;
   duration_s: number | null;
@@ -38,6 +46,7 @@ export interface ActivityStats {
   max_lat: number | null;
   min_lng: number | null;
   max_lng: number | null;
+  distance_splits?: DistanceSplit[];
 }
 
 export interface Lap {

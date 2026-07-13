@@ -246,6 +246,60 @@ def _compute_lap_stats(points: list[TrackPoint], index: int, distance: float) ->
     }
 
 
+def compute_distance_splits_from_ts(
+    ts_json: str, interval_m: float = 10000.0
+) -> list[dict]:
+    try:
+        series = json.loads(ts_json)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if len(series) < 2:
+        return []
+
+    total_distance_m = series[-1]["d"] or 0.0
+    if total_distance_m < interval_m:
+        return []
+
+    splits = []
+    next_split = interval_m
+    cumul_time = 0.0
+    prev_d = series[0]["d"] or 0.0
+
+    for i in range(1, len(series)):
+        curr_d = series[i]["d"] or 0.0
+        seg_d = curr_d - prev_d
+        spd = series[i].get("spd") or 0
+        if seg_d > 0 and spd > 0:
+            cumul_time += seg_d / spd
+
+        while curr_d >= next_split:
+            t_before = cumul_time - (seg_d / spd) if seg_d > 0 and spd > 0 else cumul_time
+            frac = (next_split - prev_d) / seg_d if seg_d > 0 else 0
+            split_time = t_before + frac * (cumul_time - t_before)
+
+            prev_split_km = next_split / 1000 - interval_m / 1000
+            prev_time = next(
+                (s["cumulative_time_s"] for s in reversed(splits) if abs(s["split_km"] - prev_split_km) < 0.01),
+                0.0
+            ) if prev_split_km > 0 else 0.0
+            seg_time = split_time - prev_time
+
+            splits.append({
+                "split_km": next_split / 1000,
+                "cumulative_time_s": round(split_time, 1),
+                "cumulative_speed_kmh": round((next_split / 1000) / (split_time / 3600), 1) if split_time > 0 else 0,
+                "segment_time_s": round(seg_time, 1),
+                "segment_speed_kmh": round((interval_m / 1000) / (seg_time / 3600), 1) if seg_time > 0 else 0,
+            })
+            next_split += interval_m
+
+        prev_d = curr_d
+        if next_split > total_distance_m:
+            break
+
+    return splits
+
+
 def process_activity(points: list[TrackPoint], session_overrides: dict | None = None) -> dict:
     stats = compute_stats(points)
     polyline = encode_polyline(points)

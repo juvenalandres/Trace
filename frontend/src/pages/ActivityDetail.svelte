@@ -75,6 +75,14 @@
     return (speed * 3.6).toFixed(1);
   }
 
+  function formatPaceKmh(kmh: number): string {
+    if (!kmh || kmh <= 0) return '-';
+    const pace = 60 / kmh;
+    const min = Math.floor(pace);
+    const sec = Math.floor((pace - min) * 60);
+    return `${min}:${sec.toString().padStart(2, '0')}`;
+  }
+
   function formatPace(speed: number | null): string {
     if (speed === null || speed === 0) return '-';
     const pace = 1000 / speed / 60;
@@ -266,6 +274,36 @@
           {/if}
         </div>
       {/if}
+    {/if}
+
+    {#if activity.stats?.distance_splits && activity.stats.distance_splits.length > 0}
+      <div class="section">
+        <div class="splits-card">
+          <h3 class="splits-title"><Icon name="chart" size={18} /> Distance splits</h3>
+          <table class="splits-table">
+            <thead>
+              <tr>
+                <th>Split</th>
+                <th>Cumulative time</th>
+                <th>Segment time</th>
+                <th>Cumulative {activity.sport_type === 'run' ? 'pace' : 'speed'}</th>
+                <th>Segment {activity.sport_type === 'run' ? 'pace' : 'speed'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each activity.stats.distance_splits as s}
+                <tr>
+                  <td class="split-dist">{s.split_km} km</td>
+                  <td>{formatDuration(s.cumulative_time_s)}</td>
+                  <td>{formatDuration(s.segment_time_s)}</td>
+                  <td>{activity.sport_type === 'run' ? formatPaceKmh(s.cumulative_speed_kmh) + ' /km' : s.cumulative_speed_kmh.toFixed(1) + ' km/h'}</td>
+                  <td>{activity.sport_type === 'run' ? formatPaceKmh(s.segment_speed_kmh) + ' /km' : s.segment_speed_kmh.toFixed(1) + ' km/h'}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      </div>
     {/if}
   {/if}
 </div>
@@ -528,6 +566,42 @@
     font-size: var(--font-size-base, 13px);
     font-weight: var(--font-weight-regular, 400);
     margin-bottom: 16px;
+  }
+  .splits-card {
+    background: var(--card-bg, var(--surface));
+    border: var(--card-border, 0.5px solid var(--border));
+    border-radius: var(--card-radius, 10px);
+    padding: var(--card-padding, 16px);
+  }
+  .splits-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--font-size-xl, 18px);
+    font-weight: var(--font-weight-medium, 500);
+    margin: 0 0 12px;
+  }
+  .splits-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .splits-table th, .splits-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 0.5px solid var(--border);
+    font-size: var(--font-size-base, 13px);
+    font-weight: var(--font-weight-regular, 400);
+  }
+  .splits-table th {
+    font-weight: var(--font-weight-medium, 500);
+    font-size: var(--font-size-xs, 11px);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+  }
+  .splits-table tr:last-child td { border-bottom: none; }
+  .split-dist {
+    font-weight: var(--font-weight-medium, 500);
   }
   @media (max-width: 768px) {
     .activity-detail { padding: 16px; }
