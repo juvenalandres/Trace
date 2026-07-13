@@ -1331,16 +1331,20 @@ async def available_years(
 @app.get("/api/stats/volume")
 async def volume(
     year: int | None = None,
+    days: int | None = Query(None, ge=1, le=730),
     user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
     cache = get_stats_cache()
-    cache_key = f"{user.id}:volume:{year or ''}"
+    cache_key = f"{user.id}:volume:{year or ''}:{days or ''}"
     cached = cache.get(cache_key)
     if cached:
         return cached
 
-    if year:
+    if days:
+        start = datetime.date.today() - datetime.timedelta(days=days)
+        end = datetime.date.today() + datetime.timedelta(days=1)
+    elif year:
         start = datetime.date(year, 1, 1)
         end = datetime.date(year + 1, 1, 1)
     else:
@@ -1769,14 +1773,18 @@ async def delete_block(
 
 @app.get("/api/training/insights")
 async def training_insights(
+    days: int = Query(168, ge=1, le=548),
     user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
     today = date.today()
     start_of_week = today - timedelta(days=today.weekday())
-    weeks_back = 24
-    start_date = start_of_week - timedelta(weeks=weeks_back - 1)
+    start_date = start_of_week - timedelta(days=days)
     start_dt = datetime.datetime.combine(start_date, datetime.time.min).replace(tzinfo=datetime.timezone.utc)
+
+    # Align bucket generation to Mondays so keys match _week_start_expr
+    bucket_start = start_date - timedelta(days=start_date.weekday())
+    weeks_back = max(1, ((start_of_week - bucket_start).days // 7) + 1)
 
     # Weekly volume aggregated in SQL
     week_q = (
@@ -1819,7 +1827,7 @@ async def training_insights(
     # Build weekly buckets (all weeks, even empty)
     weekly: dict[str, dict] = {}
     for i in range(weeks_back):
-        wk = start_date + timedelta(weeks=i)
+        wk = bucket_start + timedelta(weeks=i)
         key = wk.isoformat()
         weekly[key] = {"week_start": key, "distance_m": 0, "duration_s": 0, "moving_time_s": 0, "count": 0}
 
@@ -1845,7 +1853,7 @@ async def training_insights(
     for sport, weeks in pace_data.items():
         trend = []
         for i in range(weeks_back):
-            wk = start_date + timedelta(weeks=i)
+            wk = bucket_start + timedelta(weeks=i)
             key = wk.isoformat()
             trend.append({"week_start": key, "avg_speed": weeks.get(key)})
         pace_trends[sport] = trend
@@ -2000,7 +2008,7 @@ async def training_weekly_volume(
 
 @app.get("/api/training/ctl")
 async def training_ctl(
-    days: int = Query(90, le=365),
+    days: int = Query(90, ge=1, le=730),
     user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):

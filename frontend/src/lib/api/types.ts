@@ -307,9 +307,12 @@ export const statsApi = {
     return api.get<RouteItem[]>(`/stats/activity-routes?${params}`);
   },
 
-  volume: (year?: number) => {
-    const params = year ? `?year=${year}` : '';
-    return api.get<VolumeResponse>(`/stats/volume${params}`);
+  volume: (year?: number, days?: number) => {
+    const params = new URLSearchParams();
+    if (year) params.set('year', String(year));
+    if (days) params.set('days', String(days));
+    const qs = params.toString();
+    return api.get<VolumeResponse>(`/stats/volume${qs ? `?${qs}` : ''}`);
   },
 
   personalRecords: (sportType?: string, year?: number) => {
@@ -447,7 +450,7 @@ export const trainingApi = {
 
   deleteBlock: (blockId: number) => api.del(`/training/blocks/${blockId}`),
 
-  insights: () => api.get<TrainingInsights>('/training/insights'),
+  insights: (days: number = 168) => api.get<TrainingInsights>(`/training/insights?days=${days}`),
 
   ctl: (days: number = 90) => api.get<CtlResponse>(`/training/ctl?days=${days}`),
 
