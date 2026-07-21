@@ -78,6 +78,7 @@ Set via environment variables in `.env`:
 | `TRACE_MAX_UPLOAD_SIZE_MB`   | `50`                | Max GPX/FIT upload size                          |
 | `TRACE_DB_POOL_SIZE`         | `5`                 | SQLAlchemy connection pool size                  |
 | `TRACE_DB_MAX_OVERFLOW`      | `10`                | Max pool overflow connections                    |
+| `TRACE_SIMPLIFIED_TIME_SERIES_BUCKET_S` | `5`     | Time-bucket width (seconds) for chart time series averaging |
 | `TRACE_SEGMENT_MATCH_RADIUS` | `50`                | Segment auto-match radius in meters                |
 | `TRACE_SEGMENT_MATCH_MAX`    | `5000`              | Max segments to check per upload                   |
 
