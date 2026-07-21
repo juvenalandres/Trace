@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import datetime as dt
+import hashlib
 import logging
 import math
 import signal
@@ -411,6 +412,17 @@ async def upload_activity(
     content = await file.read()
     filename = (file.filename or "").lower()
 
+    # File hash dedup: reject duplicate uploads for the same user
+    file_hash = hashlib.sha256(content).hexdigest()
+    dup = await db.execute(
+        select(Activity.id).where(
+            Activity.user_id == user.id,
+            Activity.file_hash == file_hash,
+        )
+    )
+    if dup.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="This file has already been uploaded")
+
     if filename.endswith(".fit"):
         fit_result: FitResult = parse_fit(content)
         points = fit_result.points
@@ -465,6 +477,7 @@ async def upload_activity(
         start_time=start_time or datetime.datetime.now(datetime.timezone.utc),
         source=source,
         gear_id=gear_id,
+        file_hash=file_hash,
     )
     db.add(activity)
     await db.flush()
@@ -559,7 +572,7 @@ async def upload_activity(
     
     session_load = None
     if stats.avg_hr and stats.duration_s:
-        session_load = compute_trimp(stats.duration_s, stats.avg_hr, stats.max_hr, user.max_hr)
+        session_load = compute_trimp(stats.duration_s, stats.avg_hr, user.max_hr, user.resting_hr)
     
     if session_load is None and stats.duration_s:
         session_load = compute_training_load(stats.duration_s, stats.avg_speed)
