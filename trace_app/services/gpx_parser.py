@@ -15,6 +15,7 @@ class TrackPoint:
     hr: int | None = None
     cadence: int | None = None
     power: int | None = None
+    speed: float | None = None
     temp: float | None = None
 
 

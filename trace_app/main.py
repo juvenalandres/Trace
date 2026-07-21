@@ -422,10 +422,15 @@ async def upload_activity(
             "distance_m": session.total_distance,
             "duration_s": session.total_elapsed_time,
             "calories": session.total_calories,
+            "moving_time_s": session.total_moving_time,
+            "elevation_gain": session.total_ascent,
+            "elevation_loss": session.total_descent,
             "avg_speed": session.avg_speed,
             "max_speed": session.max_speed,
             "avg_hr": session.avg_hr,
             "max_hr": session.max_hr,
+            "avg_power": session.avg_power,
+            "max_power": session.max_power,
         }
         result = process_activity(points, session_overrides)
         source = "fit"

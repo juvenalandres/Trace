@@ -59,7 +59,7 @@ def compute_stats(points: list[TrackPoint]) -> dict:
         if p_prev.time is not None and p_curr.time is not None:
             time_diff = (p_curr.time - p_prev.time).total_seconds()
             if time_diff > 0:
-                speed_ms = dist / time_diff
+                speed_ms = p_curr.speed if p_curr.speed is not None else dist / time_diff
                 max_speed_ms = max(max_speed_ms, speed_ms)
                 if speed_ms > 0.5:
                     moving_time += time_diff
@@ -221,7 +221,8 @@ def _compute_lap_stats(points: list[TrackPoint], index: int, distance: float) ->
             dt = (curr.time - prev.time).total_seconds()
             if dt > 0:
                 seg = haversine_distance(prev.lat, prev.lng, curr.lat, curr.lng)
-                speeds.append(seg / dt)
+                speed = curr.speed if curr.speed is not None else seg / dt
+                speeds.append(speed)
 
     for p in points:
         if p.hr is not None:

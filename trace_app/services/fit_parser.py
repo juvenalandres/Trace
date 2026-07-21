@@ -23,10 +23,15 @@ class FitSession:
     total_elapsed_time: float | None = None
     total_distance: float | None = None
     total_calories: int | None = None
+    total_ascent: float | None = None
+    total_descent: float | None = None
+    total_moving_time: float | None = None
     avg_speed: float | None = None
     max_speed: float | None = None
     avg_hr: int | None = None
     max_hr: int | None = None
+    avg_power: float | None = None
+    max_power: float | None = None
 
 
 @dataclass
@@ -57,8 +62,13 @@ def parse_fit(content: bytes) -> FitResult:
         session.total_calories = _get_field_value(msg, "total_calories")
         session.avg_speed = _get_field_value(msg, "enhanced_avg_speed") or _get_field_value(msg, "avg_speed")
         session.max_speed = _get_field_value(msg, "enhanced_max_speed") or _get_field_value(msg, "max_speed")
+        session.total_ascent = _get_field_value(msg, "total_ascent")
+        session.total_descent = _get_field_value(msg, "total_descent")
+        session.total_moving_time = _get_field_value(msg, "total_moving_time")
         session.avg_hr = _get_field_value(msg, "avg_heart_rate")
         session.max_hr = _get_field_value(msg, "max_heart_rate")
+        session.avg_power = _get_field_value(msg, "avg_power")
+        session.max_power = _get_field_value(msg, "max_power")
         break
 
     if session.start_time and session.start_time.tzinfo is None:
@@ -113,6 +123,7 @@ def parse_fit(content: bytes) -> FitResult:
             cadence=int(cadence) if cadence is not None else None,
             power=int(power) if power is not None else None,
             temp=float(temp) if temp is not None else None,
+            speed=speed,
         ))
 
     return FitResult(points=points, session=session)
