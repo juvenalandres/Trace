@@ -127,40 +127,124 @@ def build_elevation_profile(points: list[TrackPoint]) -> list[list[float]]:
 
 
 def build_simplified_time_series(
-    points: list[TrackPoint], nth: int | None = None
+    points: list[TrackPoint], bucket_s: int | None = None
 ) -> list[dict]:
-    if nth is None:
-        nth = settings.simplified_time_series_nth
-    series = []
-    cumulative = 0.0
-    for i, p in enumerate(points):
-        spd = None
-        pace = None
-        if i > 0:
-            prev = points[i - 1]
-            seg = haversine_distance(prev.lat, prev.lng, p.lat, p.lng)
-            cumulative += seg
-            if p.time is not None and prev.time is not None:
-                dt = (p.time - prev.time).total_seconds()
-                if dt > 0:
-                    spd = round(seg / dt, 2)
-                    if seg > 0:
-                        pace = round((dt / seg) * 1000 / 60, 2)
-        else:
-            cumulative = 0.0
+    if bucket_s is None:
+        bucket_s = settings.simplified_time_series_bucket_s
+    if not points or bucket_s <= 0:
+        return []
 
-        if i % nth == 0 or i == len(points) - 1:
-            series.append({
-                "d": round(cumulative, 1),
-                "ele": round(p.ele, 1) if p.ele is not None else None,
-                "spd": spd,
-                "pace": pace,
-                "hr": p.hr,
-                "pwr": p.power,
-                "cad": p.cadence,
-                "lat": p.lat,
-                "lng": p.lng,
-            })
+    first_time = None
+    for p in points:
+        if p.time is not None:
+            first_time = p.time
+            break
+
+    if first_time is None:
+        nth = max(1, bucket_s)
+        series = []
+        cumulative = 0.0
+        for i, p in enumerate(points):
+            if i > 0:
+                prev = points[i - 1]
+                seg = haversine_distance(prev.lat, prev.lng, p.lat, p.lng)
+                cumulative += seg
+            if i % nth == 0 or i == len(points) - 1:
+                spd = None
+                pace = None
+                if i > 0 and p.time is not None and points[i - 1].time is not None:
+                    prev = points[i - 1]
+                    dt = (p.time - prev.time).total_seconds()
+                    seg = haversine_distance(prev.lat, prev.lng, p.lat, p.lng)
+                    if dt > 0:
+                        spd = round(seg / dt, 2)
+                        if seg > 0:
+                            pace = round((dt / seg) * 1000 / 60, 2)
+                series.append({
+                    "d": round(cumulative, 1),
+                    "ele": round(p.ele, 1) if p.ele is not None else None,
+                    "spd": spd, "pace": pace,
+                    "hr": p.hr, "pwr": p.power, "cad": p.cadence,
+                    "lat": p.lat, "lng": p.lng,
+                })
+        return series
+
+    cum_dists = [0.0]
+    for i in range(1, len(points)):
+        seg = haversine_distance(points[i - 1].lat, points[i - 1].lng, points[i].lat, points[i].lng)
+        cum_dists.append(cum_dists[-1] + seg)
+
+    buckets: dict[int, list[int]] = {}
+    for i, p in enumerate(points):
+        if p.time is not None:
+            bidx = int((p.time - first_time).total_seconds() // bucket_s)
+        else:
+            bidx = 0
+        buckets.setdefault(bidx, []).append(i)
+
+    # Build intermediate rows: averaged fields + cumulative distance at bucket end + midpoint time
+    rows: list[dict] = []
+    for bidx in sorted(buckets):
+        indices = buckets[bidx]
+        last_idx = indices[-1]
+        first_idx = indices[0]
+        end_dist = cum_dists[last_idx]
+        first_pt = points[first_idx]
+        last_pt = points[last_idx]
+
+        n = len(indices)
+        avg_lat = sum(points[idx].lat for idx in indices) / n
+        avg_lng = sum(points[idx].lng for idx in indices) / n
+
+        eles = [points[idx].ele for idx in indices if points[idx].ele is not None]
+        hrs = [points[idx].hr for idx in indices if points[idx].hr is not None]
+        pwrs = [points[idx].power for idx in indices if points[idx].power is not None]
+        cads = [points[idx].cadence for idx in indices if points[idx].cadence is not None]
+
+        mid_time = None
+        if first_pt.time is not None and last_pt.time is not None:
+            mid_dt = (last_pt.time - first_pt.time).total_seconds() / 2
+            mid_time = first_pt.time.timestamp() + mid_dt
+
+        rows.append({
+            "d": end_dist,
+            "ele": sum(eles) / len(eles) if eles else None,
+            "hr": sum(hrs) / len(hrs) if hrs else None,
+            "pwr": sum(pwrs) / len(pwrs) if pwrs else None,
+            "cad": sum(cads) / len(cads) if cads else None,
+            "lat": avg_lat,
+            "lng": avg_lng,
+            "t": mid_time,
+        })
+
+    # Compute speed/pace between consecutive output points
+    series = []
+    for i, row in enumerate(rows):
+        spd = 0.0
+        pace = 0.0
+        if i > 0:
+            prev = rows[i - 1]
+            d_dist = row["d"] - prev["d"]
+            t_delta = 0.0
+            if row["t"] is not None and prev["t"] is not None:
+                t_delta = row["t"] - prev["t"]
+            if t_delta > 0:
+                spd = d_dist / t_delta
+                if d_dist > 0:
+                    pace = (t_delta / d_dist) * 1000 / 60
+
+        series.append({
+            "d": round(row["d"], 1),
+            "ele": round(row["ele"], 1) if row["ele"] is not None else None,
+            "spd": round(spd, 2),
+            "pace": round(pace, 2),
+            "hr": round(row["hr"]) if row["hr"] is not None else None,
+            "pwr": round(row["pwr"]) if row["pwr"] is not None else None,
+            "cad": round(row["cad"]) if row["cad"] is not None else None,
+            "lat": round(row["lat"], 6),
+            "lng": round(row["lng"], 6),
+        })
+
     return series
 
 
