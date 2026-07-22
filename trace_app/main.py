@@ -568,7 +568,7 @@ async def upload_activity(
             break
 
     # Compute training load and update daily CTL/ATL/TSB
-    from trace_app.services.training_load import compute_trimp, compute_training_load, update_daily_training_load, backfill_daily_loads
+    from trace_app.services.training_load import compute_trimp, compute_training_load, update_daily_training_load, remove_daily_training_load, backfill_daily_loads
     
     session_load = None
     if stats.avg_hr and stats.duration_s:
@@ -779,7 +779,9 @@ async def delete_activity(
     db=Depends(get_db),
 ):
     result = await db.execute(
-        select(Activity).where(Activity.id == activity_id, Activity.user_id == user.id)
+        select(Activity)
+        .options(selectinload(Activity.stats))
+        .where(Activity.id == activity_id, Activity.user_id == user.id)
     )
     activity = result.scalar_one_or_none()
     if not activity:
@@ -790,6 +792,20 @@ async def delete_activity(
     efforts = (await db.execute(effort_q)).scalars().all()
     for e in efforts:
         await db.delete(e)
+
+    # Subtract training load before deletion so CTL/ATL/TSB stay accurate
+    if activity.stats and activity.stats.training_load:
+        from trace_app.services.training_load import remove_daily_training_load
+
+        activity_date = activity.start_time.date()
+        logger.info("Removing training_load %.1f for activity %d on %s",
+                     activity.stats.training_load, activity.id, activity_date)
+        await remove_daily_training_load(
+            db, user.id, activity_date, activity.stats.training_load
+        )
+    else:
+        logger.info("No training_load to remove for activity %d (stats=%s, load=%s)",
+                     activity.id, activity.stats, getattr(activity.stats, 'training_load', None) if activity.stats else None)
 
     # Unlink any training sessions linked to this activity
     session_q = select(TrainingSession).where(TrainingSession.activity_id == activity_id)

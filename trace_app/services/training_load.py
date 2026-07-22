@@ -102,6 +102,31 @@ async def backfill_daily_loads(
     await recompute_ctl_atl_tsb(db, user_id, first_missing, max_hr, resting_hr)
 
 
+async def remove_daily_training_load(
+    db: AsyncSession,
+    user_id: int,
+    activity_date: date,
+    session_load: float,
+) -> None:
+    """Subtract session load from daily record and recompute CTL/ATL/TSB."""
+    result = await db.execute(
+        select(DailyTrainingLoad).where(
+            DailyTrainingLoad.user_id == user_id,
+            DailyTrainingLoad.date == activity_date,
+        )
+    )
+    daily = result.scalar_one_or_none()
+    if not daily:
+        return
+
+    daily.training_load -= session_load
+    if daily.training_load < 0:
+        daily.training_load = 0.0
+
+    await db.flush()
+    await recompute_ctl_atl_tsb(db, user_id, activity_date, None, None)
+
+
 async def update_daily_training_load(
     db: AsyncSession,
     user: User,
