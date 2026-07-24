@@ -57,13 +57,14 @@ async def match_activities_for_segment(
         if not points or len(points) < 2:
             continue
 
-        effort = _try_match_segment(
+        new_efforts = _try_match_segment(
             segment, points, activity.id, activity.user_id, activity.start_time, radius_m
         )
-        if effort is not None:
+        for effort in new_efforts:
             existing_q = select(SegmentEffort).where(
                 SegmentEffort.segment_id == segment.id,
                 SegmentEffort.activity_id == activity.id,
+                SegmentEffort.start_time == effort.start_time,
             )
             existing = (await db.execute(existing_q)).scalar_one_or_none()
             if existing is None:
@@ -102,13 +103,14 @@ async def match_segments_for_activity(
 
     efforts = []
     for seg in segments:
-        effort = _try_match_segment(
+        new_efforts = _try_match_segment(
             seg, points, activity_id, user_id, start_time, radius_m
         )
-        if effort is not None:
+        for effort in new_efforts:
             existing_q = select(SegmentEffort).where(
                 SegmentEffort.segment_id == seg.id,
                 SegmentEffort.activity_id == activity_id,
+                SegmentEffort.start_time == effort.start_time,
             )
             existing = (await db.execute(existing_q)).scalar_one_or_none()
             if existing is None:
@@ -128,72 +130,75 @@ def _try_match_segment(
     user_id: int,
     start_time,
     radius_m: float,
-) -> SegmentEffort | None:
-    start_idx = None
-    for i, p in enumerate(points):
-        dist = haversine(
-            (p.lat, p.lng), (seg.start_lat, seg.start_lng), unit=Unit.METERS
-        )
-        if dist <= radius_m:
-            start_idx = i
+) -> list[SegmentEffort]:
+    """Find all start→end pairs in the activity that match this segment."""
+    efforts: list[SegmentEffort] = []
+
+    idx = 0
+    while idx < len(points):
+        start_idx = None
+        for i in range(idx, len(points)):
+            dist = haversine(
+                (points[i].lat, points[i].lng), (seg.start_lat, seg.start_lng), unit=Unit.METERS
+            )
+            if dist <= radius_m:
+                start_idx = i
+                break
+
+        if start_idx is None:
             break
 
-    if start_idx is None:
-        return None
+        end_idx = None
+        for i in range(start_idx + 1, len(points)):
+            dist = haversine(
+                (points[i].lat, points[i].lng), (seg.end_lat, seg.end_lng), unit=Unit.METERS
+            )
+            if dist <= radius_m:
+                end_idx = i
+                break
 
-    end_idx = None
-    for i in range(start_idx + 1, len(points)):
-        p = points[i]
-        dist = haversine(
-            (p.lat, p.lng), (seg.end_lat, seg.end_lng), unit=Unit.METERS
-        )
-        if dist <= radius_m:
-            end_idx = i
+        if end_idx is None:
             break
 
-    if end_idx is None:
-        return None
+        seg_points = points[start_idx : end_idx + 1]
+        idx = end_idx + 1
 
-    seg_points = points[start_idx : end_idx + 1]
-    if len(seg_points) < 2:
-        return None
+        if len(seg_points) < 2:
+            continue
 
-    elapsed_s = 0.0
-    if seg_points[0].time and seg_points[-1].time:
-        elapsed_s = (seg_points[-1].time - seg_points[0].time).total_seconds()
-        if elapsed_s <= 0:
-            return None
+        elapsed_s = 0.0
+        if seg_points[0].time and seg_points[-1].time:
+            elapsed_s = (seg_points[-1].time - seg_points[0].time).total_seconds()
+            if elapsed_s <= 0:
+                continue
 
-    total_dist = 0.0
-    speeds = []
-    hrs = []
-    powers = []
-    for i in range(1, len(seg_points)):
-        prev, cur = seg_points[i - 1], seg_points[i]
-        d = haversine((prev.lat, prev.lng), (cur.lat, cur.lng), unit=Unit.METERS)
-        total_dist += d
-        if prev.time and cur.time:
-            dt = (cur.time - prev.time).total_seconds()
-            if dt > 0:
-                speeds.append(d / dt)
-        if cur.hr:
-            hrs.append(cur.hr)
-        if cur.power:
-            powers.append(cur.power)
+        total_dist = 0.0
+        hrs = []
+        powers = []
+        for i in range(1, len(seg_points)):
+            prev, cur = seg_points[i - 1], seg_points[i]
+            d = haversine((prev.lat, prev.lng), (cur.lat, cur.lng), unit=Unit.METERS)
+            total_dist += d
+            if cur.hr:
+                hrs.append(cur.hr)
+            if cur.power:
+                powers.append(cur.power)
 
-    avg_speed = (total_dist / elapsed_s) if elapsed_s > 0 else None
-    avg_hr = sum(hrs) / len(hrs) if hrs else None
-    avg_power = sum(powers) / len(powers) if powers else None
+        avg_speed = (total_dist / elapsed_s) if elapsed_s > 0 else None
+        avg_hr = sum(hrs) / len(hrs) if hrs else None
+        avg_power = sum(powers) / len(powers) if powers else None
 
-    effort_start_time = seg_points[0].time or start_time
+        effort_start_time = seg_points[0].time or start_time
 
-    return SegmentEffort(
-        segment_id=seg.id,
-        activity_id=activity_id,
-        user_id=user_id,
-        elapsed_time_s=elapsed_s,
-        avg_speed=round(avg_speed, 2) if avg_speed else None,
-        avg_hr=round(avg_hr, 1) if avg_hr else None,
-        avg_power=round(avg_power, 1) if avg_power else None,
-        start_time=effort_start_time,
-    )
+        efforts.append(SegmentEffort(
+            segment_id=seg.id,
+            activity_id=activity_id,
+            user_id=user_id,
+            elapsed_time_s=elapsed_s,
+            avg_speed=round(avg_speed, 2) if avg_speed else None,
+            avg_hr=round(avg_hr, 1) if avg_hr else None,
+            avg_power=round(avg_power, 1) if avg_power else None,
+            start_time=effort_start_time,
+        ))
+
+    return efforts
