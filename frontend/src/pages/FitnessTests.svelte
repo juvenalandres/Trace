@@ -178,6 +178,33 @@
     }
   }
 
+  function drawSelectionOverlay(u: uPlot) {
+    const { ctx } = u;
+    if (!ctx || selectionStart >= selectionEnd) return;
+
+    const left = u.valToPos(selectionStart, 'x', true);
+    const right = u.valToPos(selectionEnd, 'x', true);
+    const top = 0;
+    const bottom = u.bbox.height;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+
+    if (left > 0) {
+      ctx.fillRect(0, top, left, bottom);
+    }
+
+    const chartW = u.bbox.width;
+    if (right < chartW) {
+      ctx.fillRect(right, top, chartW - right, bottom);
+    }
+
+    ctx.fillStyle = 'rgba(59,130,246,0.06)';
+    ctx.fillRect(left, top, right - left, bottom);
+
+    ctx.restore();
+  }
+
   function buildChart() {
     if (!chartContainer || !chartData) return;
     if (chart) chart.destroy();
@@ -204,6 +231,9 @@
         { stroke: '#ef4444', width: 1.5, label: 'HR', points: { show: false } },
         { stroke: '#94a3b8', width: 1, fill: 'rgba(148,163,184,0.1)', label: 'Elevation' },
       ],
+      hooks: {
+        drawClear: [drawSelectionOverlay],
+      },
     };
 
     chart = new uPlot(opts, data, chartContainer);
@@ -222,6 +252,7 @@
     if (endIdx < startIdx) endIdx = startIdx;
     selectionStart = chartData.timestamps[startIdx];
     selectionEnd = chartData.timestamps[endIdx];
+    chart?.redraw();
     computeValue();
   }
 
@@ -698,7 +729,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    min-width: 500px;
+    min-width: 700px;
     font-family: var(--font-sans);
   }
   .field {
