@@ -113,6 +113,7 @@ def parse_fit(content: bytes) -> FitResult:
             cadence=int(cadence) if cadence is not None else None,
             power=int(power) if power is not None else None,
             temp=float(temp) if temp is not None else None,
+            speed=float(speed) if speed is not None else None,
         ))
 
     return FitResult(points=points, session=session)

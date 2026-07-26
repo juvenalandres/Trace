@@ -23,6 +23,7 @@ class Activity(Base):
     gear_id: Mapped[int | None] = mapped_column(ForeignKey("gear.id"), default=None)
     notes: Mapped[str | None] = mapped_column(Text, default=None)
     rpe: Mapped[int | None] = mapped_column(Integer, default=None)
+    file_hash: Mapped[str | None] = mapped_column(String(64), default=None, index=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

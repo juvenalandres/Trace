@@ -679,3 +679,42 @@ export const routeApi = {
     api.post<RouteElevationResponse>('/routes/elevation', { points }),
 };
 
+export interface FitnessTest {
+  id: number;
+  user_id: number;
+  test_type: string;
+  value: number;
+  unit: string;
+  start_time: string;
+  end_time: string;
+  fit_file_path: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface FitnessTestChartData {
+  timestamps: number[];
+  power: (number | null)[];
+  hr: (number | null)[];
+  elevation: (number | null)[];
+  speed: (number | null)[];
+  fit_start_time: string | null;
+}
+
+export const fitnessTestApi = {
+  list: (testType?: string) => {
+    const params = testType ? `?test_type=${testType}` : '';
+    return api.get<FitnessTest[]>(`/tests${params}`);
+  },
+
+  create: (file: File, fields: Record<string, string>) =>
+    api.upload<FitnessTest>('/tests', file, fields),
+
+  delete: (id: number) => api.del(`/tests/${id}`),
+
+  chart: (id: number) => api.get<FitnessTestChartData>(`/tests/${id}/chart`),
+
+  parseFit: (file: File) =>
+    api.upload<FitnessTestChartData>('/tests/parse-fit', file),
+};
+

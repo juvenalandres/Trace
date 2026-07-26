@@ -20,10 +20,11 @@
   import TrainingPlans from './pages/TrainingPlans.svelte';
   import TrainingCalendar from './pages/TrainingCalendar.svelte';
   import TrainingInsights from './pages/TrainingInsights.svelte';
+  import FitnessTests from './pages/FitnessTests.svelte';
   import RoutePlanner from './pages/RoutePlanner.svelte';
   import { onMount } from 'svelte';
 
-  type Page = 'dashboard' | 'activities' | 'activity' | 'gear' | 'segments' | 'segment-detail' | 'monthly' | 'eddingtong' | 'heatmap' | 'statistics' | 'milestones' | 'upload' | 'profile' | 'training-plans' | 'training-calendar' | 'training-insights' | 'route-planner';
+  type Page = 'dashboard' | 'activities' | 'activity' | 'gear' | 'segments' | 'segment-detail' | 'monthly' | 'eddingtong' | 'heatmap' | 'statistics' | 'milestones' | 'upload' | 'profile' | 'training-plans' | 'training-calendar' | 'training-insights' | 'fitness-tests' | 'route-planner';
 
   let loggedIn = $state(isLoggedIn());
   let currentPage = $state<Page>('dashboard');
@@ -210,6 +211,15 @@
           </button>
           <button
             class="nav-link"
+            class:active={currentPage === 'fitness-tests'}
+            onclick={() => navigate('fitness-tests')}
+            title="Fitness Tests"
+          >
+            <span class="nav-icon"><Icon name="chart" size={20} /></span>
+            {#if !collapsed}<span class="nav-label">Tests</span>{/if}
+          </button>
+          <button
+            class="nav-link"
             class:active={currentPage === 'route-planner'}
             onclick={() => navigate('route-planner')}
             title="Route Planner"
@@ -255,6 +265,8 @@
           <TrainingCalendar onNavigate={(page, id) => navigate(page as Page, id)} />
         {:else if currentPage === 'training-insights'}
           <TrainingInsights />
+        {:else if currentPage === 'fitness-tests'}
+          <FitnessTests />
         {:else if currentPage === 'route-planner'}
           <RoutePlanner />
         {:else if currentPage === 'upload'}

@@ -221,6 +221,9 @@ async def request_middleware(request: Request, call_next):
 app.include_router(auth_router)
 app.include_router(segments_router)
 
+from trace_app.routers.fitness_tests import router as fitness_tests_router
+app.include_router(fitness_tests_router)
+
 
 @app.get("/api/health")
 async def health():
