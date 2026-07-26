@@ -30,6 +30,22 @@
     fit_start_time: string | null;
   }
 
+  interface UserZone {
+    id: number;
+    zone_type: string;
+    zone_1_min: number;
+    zone_1_max: number;
+    zone_2_min: number;
+    zone_2_max: number;
+    zone_3_min: number;
+    zone_3_max: number;
+    zone_4_min: number;
+    zone_4_max: number;
+    zone_5_min: number;
+    zone_5_max: number;
+    valid_from: string | null;
+  }
+
   const TEST_TYPES = [
     { value: 'ftp', label: 'FTP (Functional Threshold Power)', unit: 'watts', icon: 'chart' },
     { value: 'lthr', label: 'LTHR (Lactate Threshold HR)', unit: 'bpm', icon: 'insights' },
@@ -38,17 +54,18 @@
   ];
 
   const HR_ZONE_PERCENTAGES = [
-    { zone: 1, min: 0.50, max: 0.60, label: 'Recovery' },
-    { zone: 2, min: 0.60, max: 0.70, label: 'Aerobic' },
-    { zone: 3, min: 0.70, max: 0.80, label: 'Tempo' },
-    { zone: 4, min: 0.80, max: 0.90, label: 'Threshold' },
-    { zone: 5, min: 0.90, max: 1.00, label: 'VO2 Max' },
+    { zone: 1, min: 0.50, max: 0.60, label: 'Z1 Recovery' },
+    { zone: 2, min: 0.60, max: 0.70, label: 'Z2 Aerobic' },
+    { zone: 3, min: 0.70, max: 0.80, label: 'Z3 Tempo' },
+    { zone: 4, min: 0.80, max: 0.90, label: 'Z4 Threshold' },
+    { zone: 5, min: 0.90, max: 1.00, label: 'Z5 VO2 Max' },
   ];
 
   let tests = $state<FitnessTest[]>([]);
   let loading = $state(true);
   let error = $state('');
   let showAddTest = $state(false);
+  let showPreview = $state(false);
   let testType = $state('ftp');
   let notes = $state('');
   let fitFile = $state<File | null>(null);
@@ -56,6 +73,8 @@
   let uploading = $state(false);
   let saving = $state(false);
   let parsing = $state(false);
+  let updateZones = $state(false);
+  let existingZones = $state<UserZone | null>(null);
 
   let chartContainer = $state<HTMLDivElement>();
   let chart: uPlot | null = null;
@@ -81,6 +100,18 @@
       groups[t.test_type].push(t);
     }
     return groups;
+  });
+
+  let computedZones = $derived.by(() => {
+    if (testType !== 'lthr' || computedValue === null) return null;
+    return HR_ZONE_PERCENTAGES.map(z => ({
+      zone: z.zone,
+      label: z.label,
+      currentMin: existingZones ? existingZones[`zone_${z.zone}_min` as keyof UserZone] as number : null,
+      currentMax: existingZones ? existingZones[`zone_${z.zone}_max` as keyof UserZone] as number : null,
+      newMin: Math.round(computedValue! * z.min),
+      newMax: Math.round(computedValue! * z.max),
+    }));
   });
 
   function formatTestType(type: string): string {
@@ -111,6 +142,15 @@
     return `${m}:${sec.toString().padStart(2, '0')}`;
   }
 
+  async function loadExistingZones() {
+    try {
+      const zones = await api.get<UserZone[]>('/zones');
+      existingZones = zones.find(z => z.zone_type === 'hr') ?? null;
+    } catch {
+      existingZones = null;
+    }
+  }
+
   async function load() {
     loading = true;
     error = '';
@@ -131,12 +171,22 @@
     computedValue = null;
     selectionStart = 0;
     selectionEnd = 0;
+    updateZones = false;
+    showPreview = false;
     showAddTest = true;
   }
 
   function closeAddTest() {
     showAddTest = false;
+  }
+
+  function cancelPreview() {
     if (chart) { chart.destroy(); chart = null; }
+    showPreview = false;
+    chartData = null;
+    fitFile = null;
+    computedValue = null;
+    updateZones = false;
   }
 
   function handleFileSelect(e: Event) {
@@ -167,9 +217,12 @@
         endIdx = chartData.timestamps.length - 1;
         selectionStart = chartData.timestamps[0];
         selectionEnd = chartData.timestamps[chartData.timestamps.length - 1];
+        showAddTest = false;
+        showPreview = true;
         await tick();
         buildChart();
         computeValue();
+        loadExistingZones();
       }
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to parse FIT file';
@@ -179,28 +232,31 @@
   }
 
   function drawSelectionOverlay(u: uPlot) {
-    const { ctx } = u;
+    const { ctx, bbox } = u;
     if (!ctx || selectionStart >= selectionEnd) return;
 
     const left = u.valToPos(selectionStart, 'x', true);
     const right = u.valToPos(selectionEnd, 'x', true);
-    const top = 0;
-    const bottom = u.bbox.height;
+    const { left: bx, top: by, width: bw, height: bh } = bbox;
 
     ctx.save();
+    ctx.beginPath();
+    ctx.rect(bx, by, bw, bh);
+    ctx.clip();
+
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
 
-    if (left > 0) {
-      ctx.fillRect(0, top, left, bottom);
+    if (left > bx) {
+      ctx.fillRect(bx, by, left - bx, bh);
     }
 
-    const chartW = u.bbox.width;
-    if (right < chartW) {
-      ctx.fillRect(right, top, chartW - right, bottom);
+    const plotRight = bx + bw;
+    if (right < plotRight) {
+      ctx.fillRect(right, by, plotRight - right, bh);
     }
 
     ctx.fillStyle = 'rgba(59,130,246,0.06)';
-    ctx.fillRect(left, top, right - left, bottom);
+    ctx.fillRect(left, by, right - left, bh);
 
     ctx.restore();
   }
@@ -222,7 +278,7 @@
       axes: [
         { stroke: '#888', grid: { stroke: '#eee' }, values: (_u: uPlot, vals: number[]) => vals.map(v => formatChartTime(v)) },
         { stroke: '#888', grid: { stroke: '#eee' }, side: 1, values: (_u: uPlot, vals: number[]) => vals.map(v => `${Math.round(v)} W`) },
-        { stroke: '#ef4444', grid: { show: false }, side: 3, values: (_u: uPlot, vals: number[]) => vals.map(v => `${Math.round(v)} bpm`) },
+        { stroke: '#ef4444', grid: { show: false }, side: 3, size: 60, values: (_u: uPlot, vals: number[]) => vals.map(v => `${Math.round(v)} bpm`) },
         { show: false },
       ],
       series: [
@@ -262,6 +318,7 @@
     const ts = chartData.timestamps;
     const power = chartData.power;
     const hr = chartData.hr;
+    const speed = chartData.speed;
 
     let totalPower = 0;
     let powerCount = 0;
@@ -275,12 +332,9 @@
       if (ts[i] >= selectionStart && ts[i] <= selectionEnd) {
         if (power[i] != null) { totalPower += power[i]!; powerCount++; }
         if (hr[i] != null) { totalHr += hr[i]!; hrCount++; if (hr[i]! > maxHr) maxHr = hr[i]!; }
-        if (chartData.speed[i] != null) { totalSpeed += chartData.speed[i]!; speedCount++; }
+        if (speed[i] != null) { totalSpeed += speed[i]!; speedCount++; }
       }
     }
-
-    const testDef = TEST_TYPES.find(t => t.value === testType);
-    if (!testDef) return;
 
     if (testType === 'ftp') {
       computedValue = powerCount > 0 ? Math.round((totalPower / powerCount) * 0.95) : null;
@@ -368,12 +422,11 @@
         notes: notes || '',
       });
 
-      if (testType === 'lthr' && computedValue) {
-        const lthr = computedValue;
+      if (updateZones && testType === 'lthr' && computedValue) {
         const zones: Record<string, number> = {};
         for (const z of HR_ZONE_PERCENTAGES) {
-          zones[`zone_${z.zone}_min`] = Math.round(lthr * z.min);
-          zones[`zone_${z.zone}_max`] = Math.round(lthr * z.max);
+          zones[`zone_${z.zone}_min`] = Math.round(computedValue * z.min);
+          zones[`zone_${z.zone}_max`] = Math.round(computedValue * z.max);
         }
         try {
           await api.post('/zones', { zone_type: 'hr', ...zones });
@@ -383,7 +436,7 @@
       }
 
       await load();
-      closeAddTest();
+      cancelPreview();
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to save test';
     } finally {
@@ -427,6 +480,134 @@
 
   {#if error}
     <ErrorBanner message={error} />
+  {/if}
+
+  {#if showPreview && chartData}
+    <div class="section preview-section">
+      <div class="section-header">
+        <h2>Review Test Result — {formatTestType(testType)}</h2>
+        <div class="preview-actions-top">
+          <button class="btn btn-sm btn-outline" onclick={cancelPreview}>Cancel</button>
+          <button class="btn btn-sm btn-primary" onclick={saveTest} disabled={saving || computedValue === null}>
+            {saving ? 'Saving...' : 'Save Test'}
+          </button>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div bind:this={chartContainer} class="chart-container"></div>
+      </div>
+      <div class="range-sliders">
+        <div class="range-row">
+          <span class="range-label">Start</span>
+          <input
+            type="range"
+            min={0}
+            max={chartData.timestamps.length - 1}
+            value={startIdx}
+            oninput={(e) => { startIdx = parseInt((e.target as HTMLInputElement).value); updateSelectionFromIdx(); }}
+          />
+          <span class="range-value">{formatChartTime(selectionStart)}</span>
+        </div>
+        <div class="range-row">
+          <span class="range-label">End</span>
+          <input
+            type="range"
+            min={0}
+            max={chartData.timestamps.length - 1}
+            value={endIdx}
+            oninput={(e) => { endIdx = parseInt((e.target as HTMLInputElement).value); updateSelectionFromIdx(); }}
+          />
+          <span class="range-value">{formatChartTime(selectionEnd)}</span>
+        </div>
+      </div>
+      <div class="selection-info">
+        <span class="selection-duration">Selected: {formatChartTime(selectionEnd - selectionStart)}</span>
+      </div>
+
+      {#if computedValue !== null}
+        <div class="result-card">
+          <div class="result-label">Computed {testType.toUpperCase()}</div>
+          <div class="result-number">{formatTestValue(computedValue, TEST_TYPES.find(t => t.value === testType)?.unit ?? '')}</div>
+          {#if testType === 'ftp'}
+            <div class="result-hint">95% of average power in selection</div>
+          {:else if testType === 'lthr'}
+            <div class="result-hint">Average HR in selection</div>
+          {:else if testType === 'threshold_pace'}
+            <div class="result-hint">Average pace in selection</div>
+          {:else if testType === 'max_hr'}
+            <div class="result-hint">Maximum HR in selection</div>
+          {/if}
+        </div>
+
+        {#if testType === 'lthr' && computedZones}
+          <div class="zone-preview">
+            <h3>
+              HR Zone Preview
+              <span class="info-tip">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span class="info-tip-content">
+                  Zones are calculated as % of LTHR:<br>
+                  Z1: 50–60% (Recovery)<br>
+                  Z2: 60–70% (Aerobic)<br>
+                  Z3: 70–80% (Tempo)<br>
+                  Z4: 80–90% (Threshold)<br>
+                  Z5: 90–100% (VO2 Max)
+                </span>
+              </span>
+            </h3>
+            {#if existingZones}
+              <p class="zone-subtitle">Compare current zones with new values based on LTHR of {computedValue} bpm</p>
+            {:else}
+              <p class="zone-subtitle">New HR zones based on LTHR of {computedValue} bpm</p>
+            {/if}
+            <div class="zone-table-wrapper">
+              <table class="zone-table">
+                <thead>
+                  <tr>
+                    <th>Zone</th>
+                    <th>Current</th>
+                    <th>New</th>
+                    <th>Difference</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each computedZones as z}
+                    <tr>
+                      <td>{z.label}</td>
+                      <td>{existingZones ? `${z.currentMin}–${z.currentMax} bpm` : '--'}</td>
+                      <td class="new-zone">{z.newMin}–{z.newMax} bpm</td>
+                      <td class={existingZones && (z.currentMin !== z.newMin || z.currentMax !== z.newMax) ? 'zone-changed' : 'zone-unchanged'}>
+                        {#if existingZones}
+                          {z.newMin - (z.currentMin ?? 0) > 0 ? '+' : ''}{z.newMin - (z.currentMin ?? 0)} / {z.newMax - (z.currentMax ?? 0) > 0 ? '+' : ''}{z.newMax - (z.currentMax ?? 0)} bpm
+                        {:else}
+                          new
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+            <label class="zone-toggle">
+              <input type="checkbox" bind:checked={updateZones} />
+              <span>Apply these HR zones</span>
+            </label>
+          </div>
+        {/if}
+      {/if}
+
+      <div class="preview-actions">
+        <button class="btn btn-lg btn-outline" onclick={cancelPreview}>Cancel</button>
+        <button class="btn btn-lg btn-primary" onclick={saveTest} disabled={saving || computedValue === null}>
+          {saving ? 'Saving...' : 'Save Test'}
+        </button>
+      </div>
+    </div>
   {/if}
 
   {#if loading}
@@ -485,7 +666,7 @@
           </table>
         </div>
       </div>
-    {:else}
+    {:else if !showPreview}
       <div class="empty-state">
         <Icon name="chart" size={48} />
         <h3>No tests recorded yet</h3>
@@ -536,58 +717,6 @@
       {/if}
     </div>
 
-    {#if chartData && chartData.timestamps.length > 0}
-      <div class="field">
-        <label>Select Time Window</label>
-        <div class="chart-card">
-          <div bind:this={chartContainer} class="chart-container"></div>
-        </div>
-        <div class="range-sliders">
-          <div class="range-row">
-            <span class="range-label">Start</span>
-            <input
-              type="range"
-              min={0}
-              max={chartData.timestamps.length - 1}
-              value={startIdx}
-              oninput={(e) => { startIdx = parseInt((e.target as HTMLInputElement).value); updateSelectionFromIdx(); }}
-            />
-            <span class="range-value">{formatChartTime(selectionStart)}</span>
-          </div>
-          <div class="range-row">
-            <span class="range-label">End</span>
-            <input
-              type="range"
-              min={0}
-              max={chartData.timestamps.length - 1}
-              value={endIdx}
-              oninput={(e) => { endIdx = parseInt((e.target as HTMLInputElement).value); updateSelectionFromIdx(); }}
-            />
-            <span class="range-value">{formatChartTime(selectionEnd)}</span>
-          </div>
-        </div>
-        <div class="selection-info">
-          <span class="selection-duration">Selected: {formatChartTime(selectionEnd - selectionStart)}</span>
-        </div>
-      </div>
-
-      {#if computedValue !== null}
-        <div class="result-preview">
-          <div class="result-label">Computed {testType.toUpperCase()}</div>
-          <div class="result-number">{formatTestValue(computedValue, TEST_TYPES.find(t => t.value === testType)?.unit ?? '')}</div>
-          {#if testType === 'ftp'}
-            <div class="result-hint">95% of average power in selection</div>
-          {:else if testType === 'lthr'}
-            <div class="result-hint">Average HR in selection. HR zones will be updated.</div>
-          {:else if testType === 'threshold_pace'}
-            <div class="result-hint">Average pace in selection</div>
-          {:else if testType === 'max_hr'}
-            <div class="result-hint">Maximum HR in selection</div>
-          {/if}
-        </div>
-      {/if}
-    {/if}
-
     <div class="field">
       <label for="test-notes">Notes (optional)</label>
       <textarea id="test-notes" bind:value={notes} rows="2" placeholder="e.g. Ramp test, felt strong..."></textarea>
@@ -595,9 +724,6 @@
 
     <div class="form-actions">
       <button class="btn btn-outline" onclick={closeAddTest}>Cancel</button>
-      <button class="btn btn-primary" onclick={saveTest} disabled={saving || !fitFile || computedValue === null}>
-        {saving ? 'Saving...' : 'Save Test'}
-      </button>
     </div>
   </div>
 </Modal>
@@ -631,6 +757,22 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
+  }
+  .preview-section {
+    border: 0.5px solid var(--primary);
+    border-radius: var(--card-radius, 10px);
+    padding: 20px;
+    background: color-mix(in srgb, var(--primary) 4%, transparent);
+  }
+  .preview-actions-top {
+    display: flex;
+    gap: 8px;
+  }
+  .preview-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
   }
   .chart-card {
     background: var(--card-bg, var(--surface));
@@ -729,7 +871,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    min-width: 700px;
+    min-width: 400px;
     font-family: var(--font-sans);
   }
   .field {
@@ -836,12 +978,13 @@
   .selection-duration {
     color: var(--text-secondary);
   }
-  .result-preview {
+  .result-card {
     background: color-mix(in srgb, var(--primary) 8%, transparent);
     border: 0.5px solid var(--border);
     border-radius: 10px;
     padding: 16px 20px;
     text-align: center;
+    margin-top: 16px;
   }
   .result-label {
     font-size: var(--font-size-xs, 11px);
@@ -859,6 +1002,100 @@
     font-size: var(--font-size-xs, 11px);
     color: var(--text-secondary);
     margin-top: 4px;
+  }
+  .zone-preview {
+    margin-top: 16px;
+    padding: 16px 20px;
+    background: var(--card-bg, var(--surface));
+    border: var(--card-border, 0.5px solid var(--border));
+    border-radius: var(--card-radius, 10px);
+  }
+  .zone-preview h3 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--font-size-base, 13px);
+    font-weight: var(--font-weight-medium, 500);
+    margin: 0 0 4px 0;
+  }
+  .info-tip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: help;
+    color: var(--text-secondary);
+  }
+  .info-tip:hover {
+    color: var(--primary);
+  }
+  .info-tip-content {
+    display: none;
+    position: absolute;
+    left: 22px;
+    top: -8px;
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: var(--font-size-xs, 11px);
+    font-weight: normal;
+    color: var(--text);
+    white-space: nowrap;
+    line-height: 1.6;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    pointer-events: none;
+  }
+  .info-tip:hover .info-tip-content {
+    display: block;
+  }
+  .zone-subtitle {
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-secondary);
+    margin: 0 0 12px 0;
+  }
+  .zone-table-wrapper {
+    overflow-x: auto;
+  }
+  .zone-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm, 12px);
+  }
+  .zone-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: var(--font-weight-medium, 500);
+    font-size: var(--font-size-xs, 11px);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    border-bottom: 0.5px solid var(--border);
+  }
+  .zone-table td {
+    padding: 8px 12px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .new-zone {
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--primary);
+  }
+  .zone-changed {
+    color: var(--primary);
+  }
+  .zone-unchanged {
+    color: var(--text-tertiary, #999);
+  }
+  .zone-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: var(--font-size-base, 13px);
+    cursor: pointer;
+  }
+  .zone-toggle input[type="checkbox"] {
+    accent-color: var(--primary);
   }
   .form-actions {
     display: flex;
@@ -888,6 +1125,7 @@
   }
   .btn-outline:hover { background: var(--hover); }
   .btn-sm { padding: 4px 8px; font-size: var(--font-size-xs, 11px); }
+  .btn-lg { padding: 10px 20px; font-size: var(--font-size-base, 13px); }
   .btn-icon {
     background: none;
     border: none;
