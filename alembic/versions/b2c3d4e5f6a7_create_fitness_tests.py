@@ -17,21 +17,24 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "fitness_tests",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("test_type", sa.String(50), nullable=False),
-        sa.Column("value", sa.Float(), nullable=False),
-        sa.Column("unit", sa.String(20), nullable=False),
-        sa.Column("start_time", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("end_time", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("fit_file_path", sa.String(500), nullable=True),
-        sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-    )
-    op.create_index("ix_fitness_tests_user_id", "fitness_tests", ["user_id"])
-    op.create_index("ix_fitness_tests_test_type", "fitness_tests", ["test_type"])
+    conn = op.get_bind()
+    result = conn.execute(sa.text("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'fitness_tests')"))
+    if not result.scalar():
+        op.create_table(
+            "fitness_tests",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+            sa.Column("test_type", sa.String(50), nullable=False),
+            sa.Column("value", sa.Float(), nullable=False),
+            sa.Column("unit", sa.String(20), nullable=False),
+            sa.Column("start_time", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("end_time", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("fit_file_path", sa.String(500), nullable=True),
+            sa.Column("notes", sa.Text(), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        )
+        op.create_index("ix_fitness_tests_user_id", "fitness_tests", ["user_id"])
+        op.create_index("ix_fitness_tests_test_type", "fitness_tests", ["test_type"])
 
 
 def downgrade() -> None:
