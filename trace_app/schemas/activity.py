@@ -1,6 +1,15 @@
 import datetime
+import json
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
+
+
+class DistanceSplit(BaseModel):
+    split_km: float
+    cumulative_time_s: float
+    cumulative_speed_kmh: float
+    segment_time_s: float
+    segment_speed_kmh: float
 
 
 class ActivityStatsResponse(BaseModel):
@@ -28,6 +37,15 @@ class ActivityStatsResponse(BaseModel):
     max_lat: float | None = None
     min_lng: float | None = None
     max_lng: float | None = None
+
+    @computed_field
+    @property
+    def distance_splits(self) -> list[DistanceSplit]:
+        if not self.simplified_time_series:
+            return []
+        from trace_app.services.activity_processor import compute_distance_splits_from_ts
+        result = compute_distance_splits_from_ts(self.simplified_time_series, interval_m=10000)
+        return [DistanceSplit(**s) for s in result]
 
 
 class LapResponse(BaseModel):

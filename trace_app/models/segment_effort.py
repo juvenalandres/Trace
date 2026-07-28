@@ -9,7 +9,7 @@ from trace_app.database import Base
 class SegmentEffort(Base):
     __tablename__ = "segment_efforts"
     __table_args__ = (
-        UniqueConstraint("segment_id", "activity_id", name="uq_segment_effort_activity"),
+        UniqueConstraint("segment_id", "activity_id", "start_time", name="uq_segment_effort_activity"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

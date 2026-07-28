@@ -79,7 +79,7 @@
   }
 
   function formatTimeOfDay(iso: string): string {
-    return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
   function sportColor(sport: string | null): string {
@@ -414,7 +414,7 @@
                 <th>Date</th>
                 <th>Started At</th>
                 <th>Athlete</th>
-                <th>Time</th>
+                <th>Duration</th>
                 <th>Avg Speed</th>
                 <th>Avg HR</th>
                 <th>Avg Power</th>

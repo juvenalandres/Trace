@@ -17,6 +17,14 @@ export interface User {
   is_admin: boolean;
 }
 
+export interface DistanceSplit {
+  split_km: number;
+  cumulative_time_s: number;
+  cumulative_speed_kmh: number;
+  segment_time_s: number;
+  segment_speed_kmh: number;
+}
+
 export interface ActivityStats {
   distance_m: number | null;
   duration_s: number | null;
@@ -38,6 +46,7 @@ export interface ActivityStats {
   max_lat: number | null;
   min_lng: number | null;
   max_lng: number | null;
+  distance_splits?: DistanceSplit[];
 }
 
 export interface Lap {
@@ -298,9 +307,12 @@ export const statsApi = {
     return api.get<RouteItem[]>(`/stats/activity-routes?${params}`);
   },
 
-  volume: (year?: number) => {
-    const params = year ? `?year=${year}` : '';
-    return api.get<VolumeResponse>(`/stats/volume${params}`);
+  volume: (year?: number, days?: number) => {
+    const params = new URLSearchParams();
+    if (year) params.set('year', String(year));
+    if (days) params.set('days', String(days));
+    const qs = params.toString();
+    return api.get<VolumeResponse>(`/stats/volume${qs ? `?${qs}` : ''}`);
   },
 
   personalRecords: (sportType?: string, year?: number) => {
@@ -438,7 +450,7 @@ export const trainingApi = {
 
   deleteBlock: (blockId: number) => api.del(`/training/blocks/${blockId}`),
 
-  insights: () => api.get<TrainingInsights>('/training/insights'),
+  insights: (days: number = 168) => api.get<TrainingInsights>(`/training/insights?days=${days}`),
 
   ctl: (days: number = 90) => api.get<CtlResponse>(`/training/ctl?days=${days}`),
 

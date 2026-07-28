@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import datetime as dt
+import hashlib
 import logging
 import math
 import signal
@@ -414,6 +415,17 @@ async def upload_activity(
     content = await file.read()
     filename = (file.filename or "").lower()
 
+    # File hash dedup: reject duplicate uploads for the same user
+    file_hash = hashlib.sha256(content).hexdigest()
+    dup = await db.execute(
+        select(Activity.id).where(
+            Activity.user_id == user.id,
+            Activity.file_hash == file_hash,
+        )
+    )
+    if dup.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="This file has already been uploaded")
+
     if filename.endswith(".fit"):
         fit_result: FitResult = parse_fit(content)
         points = fit_result.points
@@ -425,10 +437,15 @@ async def upload_activity(
             "distance_m": session.total_distance,
             "duration_s": session.total_elapsed_time,
             "calories": session.total_calories,
+            "moving_time_s": session.total_moving_time,
+            "elevation_gain": session.total_ascent,
+            "elevation_loss": session.total_descent,
             "avg_speed": session.avg_speed,
             "max_speed": session.max_speed,
             "avg_hr": session.avg_hr,
             "max_hr": session.max_hr,
+            "avg_power": session.avg_power,
+            "max_power": session.max_power,
         }
         result = process_activity(points, session_overrides)
         source = "fit"
@@ -463,6 +480,7 @@ async def upload_activity(
         start_time=start_time or datetime.datetime.now(datetime.timezone.utc),
         source=source,
         gear_id=gear_id,
+        file_hash=file_hash,
     )
     db.add(activity)
     await db.flush()
@@ -553,11 +571,11 @@ async def upload_activity(
             break
 
     # Compute training load and update daily CTL/ATL/TSB
-    from trace_app.services.training_load import compute_trimp, compute_training_load, update_daily_training_load, backfill_daily_loads
+    from trace_app.services.training_load import compute_trimp, compute_training_load, update_daily_training_load, remove_daily_training_load, backfill_daily_loads
     
     session_load = None
     if stats.avg_hr and stats.duration_s:
-        session_load = compute_trimp(stats.duration_s, stats.avg_hr, stats.max_hr, user.max_hr)
+        session_load = compute_trimp(stats.duration_s, stats.avg_hr, user.max_hr, user.resting_hr)
     
     if session_load is None and stats.duration_s:
         session_load = compute_training_load(stats.duration_s, stats.avg_speed)
@@ -764,7 +782,9 @@ async def delete_activity(
     db=Depends(get_db),
 ):
     result = await db.execute(
-        select(Activity).where(Activity.id == activity_id, Activity.user_id == user.id)
+        select(Activity)
+        .options(selectinload(Activity.stats))
+        .where(Activity.id == activity_id, Activity.user_id == user.id)
     )
     activity = result.scalar_one_or_none()
     if not activity:
@@ -798,6 +818,21 @@ async def delete_activity(
     for e in efforts:
         await db.delete(e)
 
+    # Subtract training load before deletion so CTL/ATL/TSB stay accurate
+    if activity.stats and activity.stats.training_load:
+        from trace_app.services.training_load import remove_daily_training_load
+
+        activity_date = activity.start_time.date()
+        logger.info("Removing training_load %.1f for activity %d on %s",
+                     activity.stats.training_load, activity.id, activity_date)
+        await remove_daily_training_load(
+            db, user.id, activity_date, activity.stats.training_load
+        )
+    else:
+        logger.info("No training_load to remove for activity %d (stats=%s, load=%s)",
+                     activity.id, activity.stats, getattr(activity.stats, 'training_load', None) if activity.stats else None)
+
+    # Unlink any training sessions linked to this activity
     session_q = select(TrainingSession).where(TrainingSession.activity_id == activity_id)
     session_result = await db.execute(session_q)
     for session in session_result.scalars().all():
@@ -1355,16 +1390,20 @@ async def available_years(
 @app.get("/api/stats/volume")
 async def volume(
     year: int | None = None,
+    days: int | None = Query(None, ge=1, le=730),
     user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
     cache = get_stats_cache()
-    cache_key = f"{user.id}:volume:{year or ''}"
+    cache_key = f"{user.id}:volume:{year or ''}:{days or ''}"
     cached = cache.get(cache_key)
     if cached:
         return cached
 
-    if year:
+    if days:
+        start = datetime.date.today() - datetime.timedelta(days=days)
+        end = datetime.date.today() + datetime.timedelta(days=1)
+    elif year:
         start = datetime.date(year, 1, 1)
         end = datetime.date(year + 1, 1, 1)
     else:
@@ -1793,14 +1832,18 @@ async def delete_block(
 
 @app.get("/api/training/insights")
 async def training_insights(
+    days: int = Query(168, ge=1, le=548),
     user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
     today = date.today()
     start_of_week = today - timedelta(days=today.weekday())
-    weeks_back = 24
-    start_date = start_of_week - timedelta(weeks=weeks_back - 1)
+    start_date = start_of_week - timedelta(days=days)
     start_dt = datetime.datetime.combine(start_date, datetime.time.min).replace(tzinfo=datetime.timezone.utc)
+
+    # Align bucket generation to Mondays so keys match _week_start_expr
+    bucket_start = start_date - timedelta(days=start_date.weekday())
+    weeks_back = max(1, ((start_of_week - bucket_start).days // 7) + 1)
 
     # Weekly volume aggregated in SQL
     week_q = (
@@ -1843,7 +1886,7 @@ async def training_insights(
     # Build weekly buckets (all weeks, even empty)
     weekly: dict[str, dict] = {}
     for i in range(weeks_back):
-        wk = start_date + timedelta(weeks=i)
+        wk = bucket_start + timedelta(weeks=i)
         key = wk.isoformat()
         weekly[key] = {"week_start": key, "distance_m": 0, "duration_s": 0, "moving_time_s": 0, "count": 0}
 
@@ -1869,7 +1912,7 @@ async def training_insights(
     for sport, weeks in pace_data.items():
         trend = []
         for i in range(weeks_back):
-            wk = start_date + timedelta(weeks=i)
+            wk = bucket_start + timedelta(weeks=i)
             key = wk.isoformat()
             trend.append({"week_start": key, "avg_speed": weeks.get(key)})
         pace_trends[sport] = trend
@@ -2024,7 +2067,7 @@ async def training_weekly_volume(
 
 @app.get("/api/training/ctl")
 async def training_ctl(
-    days: int = Query(90, le=365),
+    days: int = Query(90, ge=1, le=730),
     user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):

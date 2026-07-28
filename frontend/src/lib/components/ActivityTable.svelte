@@ -31,6 +31,14 @@
     return `${min}:${sec.toString().padStart(2, '0')}`;
   }
 
+  function formatSpeed(speed: number | null): string {
+    if (speed === null) return '-';
+    return (speed * 3.6).toFixed(1);
+  }
+
+  let allRuns = $derived(activities.length > 0 && activities.every(a => a.sport_type === 'run'));
+  let paceHeader = $derived(allRuns ? 'Pace' : 'Speed');
+
   function sportIcon(type: string): string {
     const map: Record<string, string> = { run: 'activity', ride: 'ride', swim: 'swim', hike: 'hike', walk: 'activity' };
     return map[type] || 'activity';
@@ -50,7 +58,7 @@
         <th class="col-date">Date</th>
         <th class="col-num">Distance</th>
         <th class="col-num">Duration</th>
-        <th class="col-num">Pace</th>
+        <th class="col-num">{paceHeader}</th>
         <th class="col-num">Elevation</th>
       </tr>
     </thead>
@@ -69,7 +77,7 @@
           <td class="col-date">{formatDate(a.start_time)}</td>
           <td class="col-num">{formatDistance(a.distance_m)}<span class="unit">km</span></td>
           <td class="col-num">{formatDuration(a.duration_s)}</td>
-          <td class="col-num">{formatPace(a.avg_speed)}<span class="unit">/km</span></td>
+          <td class="col-num">{a.sport_type === 'run' ? formatPace(a.avg_speed) : formatSpeed(a.avg_speed)}<span class="unit">{a.sport_type === 'run' ? '/km' : 'km/h'}</span></td>
           <td class="col-num">{a.elevation_gain !== null ? a.elevation_gain : '-'}<span class="unit">m</span></td>
         </tr>
       {/each}

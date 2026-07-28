@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://trace:trace@localhost:5432/trace"
     storage_dir: str = "./data/gpx"
-    simplified_time_series_nth: int = 10
+    simplified_time_series_bucket_s: int = 5
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 30
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     segment_match_radius_m: int = 50
     segment_match_max: int = 5000
 
-    model_config = {"env_prefix": "TRACE_", "env_file": ".env"}
+    model_config = {"env_prefix": "TRACE_", "env_file": ".env", "extra": "ignore"}
 
 
 settings = Settings()

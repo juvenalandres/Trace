@@ -16,6 +16,44 @@
   let loading = $state(true);
   let error = $state('');
 
+  let rangePreset = $state<'1M' | '3M' | '6M' | '12M' | 'custom'>('6M');
+  let customFrom = $state('');
+  let customTo = $state('');
+  let activeDays = $state(180);
+
+  let rangeDays = $derived.by(() => {
+    switch (rangePreset) {
+      case '1M': return 30;
+      case '3M': return 90;
+      case '6M': return 180;
+      case '12M': return 365;
+      case 'custom':
+        if (customFrom && customTo) {
+          const diff = new Date(customTo).getTime() - new Date(customFrom).getTime();
+          return Math.max(1, Math.ceil(diff / 86400000));
+        }
+        return activeDays;
+    }
+  });
+
+  let rangeLabel = $derived.by(() => {
+    switch (rangePreset) {
+      case '1M': return 'Last month';
+      case '3M': return 'Last 3 months';
+      case '6M': return 'Last 6 months';
+      case '12M': return 'Last 12 months';
+      case 'custom': return 'Custom range';
+    }
+  });
+
+  $effect(() => {
+    const d = rangeDays;
+    if (d !== activeDays) {
+      activeDays = d;
+      load();
+    }
+  });
+
   let volumeContainer: HTMLDivElement;
   let pmcContainer: HTMLDivElement;
   let sportLoadContainer: HTMLDivElement;
@@ -66,11 +104,12 @@
   async function load() {
     loading = true;
     error = '';
+    const days = activeDays;
     try {
       const [insightsResult, ctlResult, volumeResult, prResult] = await Promise.all([
-        trainingApi.insights(),
-        trainingApi.ctl(90).catch(() => null),
-        statsApi.volume().catch(() => null),
+        trainingApi.insights(days),
+        trainingApi.ctl(days).catch(() => null),
+        statsApi.volume(undefined, days).catch(() => null),
         statsApi.personalRecords().catch(() => null),
       ]);
       insights = insightsResult;
@@ -571,6 +610,27 @@
   {:else if insights}
     <div class="page-header">
       <h1>Training Insights</h1>
+      <div class="range-selector">
+        {#each ['1M', '3M', '6M', '12M'] as preset}
+          <button
+            class="range-btn"
+            class:active={rangePreset === preset}
+            onclick={() => rangePreset = preset as typeof rangePreset}
+          >{preset}</button>
+        {/each}
+        <button
+          class="range-btn"
+          class:active={rangePreset === 'custom'}
+          onclick={() => rangePreset = 'custom'}
+        >Custom</button>
+        {#if rangePreset === 'custom'}
+          <div class="custom-range">
+            <input type="date" bind:value={customFrom} />
+            <span>→</span>
+            <input type="date" bind:value={customTo} />
+          </div>
+        {/if}
+      </div>
     </div>
 
     <!-- Section 1: Overview -->
@@ -1178,6 +1238,51 @@
     font-weight: var(--font-weight-regular, 400);
     text-align: center;
     padding: 40px 0;
+  }
+  .range-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .range-btn {
+    padding: 6px 12px;
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .range-btn:hover {
+    border-color: var(--primary);
+    color: var(--text);
+  }
+  .range-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+  .custom-range {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .custom-range input[type="date"] {
+    padding: 5px 8px;
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .custom-range span {
+    color: var(--text-secondary);
+    font-size: 13px;
   }
   @media (max-width: 768px) {
     .page { padding: 16px; }
