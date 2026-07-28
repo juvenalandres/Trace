@@ -15,6 +15,22 @@ logger = logging.getLogger(__name__)
 DEFAULT_MATCH_RADIUS_M = 50
 
 
+def _interp_closest(
+    p1_lat: float, p1_lng: float,
+    p2_lat: float, p2_lng: float,
+    t_lat: float, t_lng: float,
+) -> tuple[float, float, float]:
+    """Find the point on segment p1→p2 closest to target.
+    Returns (lat, lng, t) where t ∈ [0,1] is the interpolation parameter."""
+    dy = p2_lat - p1_lat
+    dx = p2_lng - p1_lng
+    len_sq = dx * dx + dy * dy
+    if len_sq == 0:
+        return p1_lat, p1_lng, 0.0
+    t = max(0.0, min(1.0, ((t_lng - p1_lng) * dx + (t_lat - p1_lat) * dy) / len_sq))
+    return p1_lat + t * dy, p1_lng + t * dx, t
+
+
 def _parse_activity_raw_file(file_path: str) -> list[TrackPoint] | None:
     """Parse a stored raw file (GPX or FIT) back into TrackPoints."""
     path = Path(file_path)
@@ -57,13 +73,14 @@ async def match_activities_for_segment(
         if not points or len(points) < 2:
             continue
 
-        effort = _try_match_segment(
+        matched = _try_match_segment(
             segment, points, activity.id, activity.user_id, activity.start_time, radius_m
         )
-        if effort is not None:
+        for effort in matched:
             existing_q = select(SegmentEffort).where(
                 SegmentEffort.segment_id == segment.id,
                 SegmentEffort.activity_id == activity.id,
+                SegmentEffort.start_time == effort.start_time,
             )
             existing = (await db.execute(existing_q)).scalar_one_or_none()
             if existing is None:
@@ -102,13 +119,14 @@ async def match_segments_for_activity(
 
     efforts = []
     for seg in segments:
-        effort = _try_match_segment(
+        matched = _try_match_segment(
             seg, points, activity_id, user_id, start_time, radius_m
         )
-        if effort is not None:
+        for effort in matched:
             existing_q = select(SegmentEffort).where(
                 SegmentEffort.segment_id == seg.id,
                 SegmentEffort.activity_id == activity_id,
+                SegmentEffort.start_time == effort.start_time,
             )
             existing = (await db.execute(existing_q)).scalar_one_or_none()
             if existing is None:
@@ -128,72 +146,95 @@ def _try_match_segment(
     user_id: int,
     start_time,
     radius_m: float,
-) -> SegmentEffort | None:
-    start_idx = None
-    for i, p in enumerate(points):
-        dist = haversine(
-            (p.lat, p.lng), (seg.start_lat, seg.start_lng), unit=Unit.METERS
+) -> list[SegmentEffort]:
+    if seg.distance_m is None or seg.distance_m <= 0:
+        return []
+
+    tolerance = 0.10
+    results: list[SegmentEffort] = []
+    idx = 0
+
+    while idx < len(points) - 1:
+        p1, p2 = points[idx], points[idx + 1]
+        _, _, t_start = _interp_closest(
+            p1.lat, p1.lng, p2.lat, p2.lng,
+            seg.start_lat, seg.start_lng,
         )
-        if dist <= radius_m:
-            start_idx = i
-            break
+        s_lat = p1.lat + t_start * (p2.lat - p1.lat)
+        s_lng = p1.lng + t_start * (p2.lng - p1.lng)
+        if haversine((s_lat, s_lng), (seg.start_lat, seg.start_lng), unit=Unit.METERS) > radius_m:
+            idx += 1
+            continue
 
-    if start_idx is None:
-        return None
+        best_ei = None
+        best_t_end = None
+        best_ratio = float("inf")
+        best_effort = None
+        for ei in range(idx + 1, len(points) - 1):
+            q1, q2 = points[ei], points[ei + 1]
+            _, _, t_end = _interp_closest(
+                q1.lat, q1.lng, q2.lat, q2.lng,
+                seg.end_lat, seg.end_lng,
+            )
+            e_lat = q1.lat + t_end * (q2.lat - q1.lat)
+            e_lng = q1.lng + t_end * (q2.lng - q1.lng)
+            if haversine((e_lat, e_lng), (seg.end_lat, seg.end_lng), unit=Unit.METERS) > radius_m:
+                continue
 
-    end_idx = None
-    for i in range(start_idx + 1, len(points)):
-        p = points[i]
-        dist = haversine(
-            (p.lat, p.lng), (seg.end_lat, seg.end_lng), unit=Unit.METERS
-        )
-        if dist <= radius_m:
-            end_idx = i
-            break
+            start_dt = p1.time + t_start * (p2.time - p1.time) if p1.time and p2.time else None
+            end_dt = q1.time + t_end * (q2.time - q1.time) if q1.time and q2.time else None
 
-    if end_idx is None:
-        return None
+            elapsed_s = 0.0
+            if start_dt and end_dt:
+                elapsed_s = (end_dt - start_dt).total_seconds()
+                if elapsed_s <= 0:
+                    continue
 
-    seg_points = points[start_idx : end_idx + 1]
-    if len(seg_points) < 2:
-        return None
+            d_start_to_p2 = (1.0 - t_start) * haversine(
+                (p1.lat, p1.lng), (p2.lat, p2.lng), unit=Unit.METERS
+            )
+            total_dist = d_start_to_p2
+            hrs = []
+            powers = []
+            for i in range(idx + 2, ei + 1):
+                prev, cur = points[i - 1], points[i]
+                d = haversine((prev.lat, prev.lng), (cur.lat, cur.lng), unit=Unit.METERS)
+                total_dist += d
+                if cur.hr:
+                    hrs.append(cur.hr)
+                if cur.power:
+                    powers.append(cur.power)
+            d_q1_to_end = t_end * haversine(
+                (q1.lat, q1.lng), (q2.lat, q2.lng), unit=Unit.METERS
+            )
+            total_dist += d_q1_to_end
 
-    elapsed_s = 0.0
-    if seg_points[0].time and seg_points[-1].time:
-        elapsed_s = (seg_points[-1].time - seg_points[0].time).total_seconds()
-        if elapsed_s <= 0:
-            return None
+            ratio = abs(total_dist - seg.distance_m) / seg.distance_m
+            if ratio > tolerance or ratio >= best_ratio:
+                continue
 
-    total_dist = 0.0
-    speeds = []
-    hrs = []
-    powers = []
-    for i in range(1, len(seg_points)):
-        prev, cur = seg_points[i - 1], seg_points[i]
-        d = haversine((prev.lat, prev.lng), (cur.lat, cur.lng), unit=Unit.METERS)
-        total_dist += d
-        if prev.time and cur.time:
-            dt = (cur.time - prev.time).total_seconds()
-            if dt > 0:
-                speeds.append(d / dt)
-        if cur.hr:
-            hrs.append(cur.hr)
-        if cur.power:
-            powers.append(cur.power)
+            avg_speed = (total_dist / elapsed_s) if elapsed_s > 0 else None
+            avg_hr = sum(hrs) / len(hrs) if hrs else None
+            avg_power = sum(powers) / len(powers) if powers else None
 
-    avg_speed = (total_dist / elapsed_s) if elapsed_s > 0 else None
-    avg_hr = sum(hrs) / len(hrs) if hrs else None
-    avg_power = sum(powers) / len(powers) if powers else None
+            best_ratio = ratio
+            best_ei = ei
+            best_t_end = t_end
+            best_effort = SegmentEffort(
+                segment_id=seg.id,
+                activity_id=activity_id,
+                user_id=user_id,
+                elapsed_time_s=elapsed_s,
+                avg_speed=round(avg_speed, 2) if avg_speed else None,
+                avg_hr=round(avg_hr, 1) if avg_hr else None,
+                avg_power=round(avg_power, 1) if avg_power else None,
+                start_time=start_dt or start_time,
+            )
 
-    effort_start_time = seg_points[0].time or start_time
+        if best_ei is not None:
+            results.append(best_effort)
+            idx = best_ei + 1
+        else:
+            idx += 1
 
-    return SegmentEffort(
-        segment_id=seg.id,
-        activity_id=activity_id,
-        user_id=user_id,
-        elapsed_time_s=elapsed_s,
-        avg_speed=round(avg_speed, 2) if avg_speed else None,
-        avg_hr=round(avg_hr, 1) if avg_hr else None,
-        avg_power=round(avg_power, 1) if avg_power else None,
-        start_time=effort_start_time,
-    )
+    return results

@@ -6,6 +6,7 @@
 ## Medium Priority
 - [ ] **HR Zone Distribution (aggregated)** — Per-activity HR zone bar chart exists. Add weekly/monthly aggregation across activities.
 - [x] **FTP / LTHR / Threshold Tests** — Dedicated section to log and track test results over time. Upload FIT file, select time window from chart, auto-compute results. HR zone calibration from LTHR test.
+- [x] **Standalone Segment Creation** — Create segments without an activity. Click start/end points on map, straight-line distance (haversine) + Open-Meteo elevation lookup.
 - [ ] **Aerobic Decoupling (Pa:HR)** — Compute first-half vs second-half HR drift per activity. Show in activity detail stats.
 
 ## Low Priority

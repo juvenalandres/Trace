@@ -78,6 +78,10 @@
     return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
+  function formatTimeOfDay(iso: string): string {
+    return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  }
+
   function sportColor(sport: string | null): string {
     const colors: Record<string, string> = {
       run: '#22c55e', ride: '#3b82f6', swim: '#06b6d4', hike: '#f59e0b', walk: '#a855f7', other: '#64748b'
@@ -408,6 +412,7 @@
             <thead>
               <tr>
                 <th>Date</th>
+                <th>Started At</th>
                 <th>Athlete</th>
                 <th>Time</th>
                 <th>Avg Speed</th>
@@ -420,6 +425,7 @@
               {#each paginatedEfforts as effort}
                 <tr>
                   <td>{formatDate(effort.start_time)}</td>
+                  <td>{formatTimeOfDay(effort.start_time)}</td>
                   <td>{effort.user_name ?? 'Unknown'}</td>
                   <td>{formatTime(effort.elapsed_time_s)}</td>
                   <td>{formatSpeed(effort.avg_speed)}</td>

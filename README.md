@@ -23,7 +23,8 @@ Upload GPX/FIT files or log activities manually. Visualize volume, pace, elevati
 - **Training load** -- CTL, ATL, TSB with exponential decay across gap days
 - **Training plans** -- calendar-based planning with structured session targets (distance, duration, pace, HR, RPE)
 - **Year-in-review** -- monthly breakdown, PRs, favorite month/sport (Planned)
-- **Segments** -- user-defined route segments with PR tracking, leaderboard, auto-matching on new uploads, and manual back-match for existing activities; inline creation modal with elevation profile chart; dedicated detail page with interactive map, elevation profile with synced cursor, PR card, leaderboard, and paginated effort history
+- **Segments** -- user-defined route segments with PR tracking, leaderboard, auto-matching on new uploads (validates effort distance within 10% of segment length), and manual back-match for existing activities; standalone creation with OSRM routing + Open-Meteo elevation; dedicated detail page with interactive map, elevation profile with synced cursor, PR card, leaderboard, and paginated effort history
+- **Fitness tests** -- log FTP, LTHR, threshold pace, and max HR by uploading FIT files; interactive chart with time-window selection; LTHR test auto-calibrates HR zones
 - **Route planner** -- interactive map-based route builder with road snapping and elevation profiles
 - **Admin** -- first user is admin by default; admin can manage other users' roles
 

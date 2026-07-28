@@ -123,6 +123,15 @@
     drawRoutes();
     fitAllBounds();
 
+    if (!polyline && routes.length === 0 && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { if (map) map.setView([pos.coords.latitude, pos.coords.longitude], 13); },
+        () => { if (map) map.setView([51.5, -0.12], 12); },
+      );
+    } else if (!polyline && routes.length === 0) {
+      map.setView([51.5, -0.12], 12);
+    }
+
     map.on('click', (e: L.LeafletMouseEvent) => {
       const lat = Math.round(e.latlng.lat * 100000) / 100000;
       const lng = Math.round(e.latlng.lng * 100000) / 100000;
