@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { trainingApi, statsApi } from '$lib/api/types';
-  import type { TrainingInsights, CtlResponse, VolumeResponse, PersonalRecordsResponse } from '$lib/api/types';
+  import type { TrainingInsights, CtlResponse, VolumeResponse, PersonalRecordsResponse, HrZoneDistributionResponse } from '$lib/api/types';
   import uPlot from 'uplot';
   import 'uplot/dist/uPlot.min.css';
   import Icon from '$lib/components/Icon.svelte';
@@ -13,6 +13,7 @@
   let ctlData = $state<CtlResponse | null>(null);
   let volumeData = $state<VolumeResponse | null>(null);
   let prData = $state<PersonalRecordsResponse | null>(null);
+  let hrZoneData = $state<HrZoneDistributionResponse | null>(null);
   let loading = $state(true);
   let error = $state('');
 
@@ -59,6 +60,7 @@
   let sportLoadContainer: HTMLDivElement;
   let weeklyLoadContainer: HTMLDivElement;
   let acwrTrendContainer: HTMLDivElement;
+  let hrZoneContainer: HTMLDivElement;
   let volumeTooltip: HTMLDivElement;
   let weeklyLoadTooltip: HTMLDivElement;
   let pmcTooltip: HTMLDivElement;
@@ -106,16 +108,18 @@
     error = '';
     const days = activeDays;
     try {
-      const [insightsResult, ctlResult, volumeResult, prResult] = await Promise.all([
+      const [insightsResult, ctlResult, volumeResult, prResult, hrZoneResult] = await Promise.all([
         trainingApi.insights(days),
         trainingApi.ctl(days).catch(() => null),
         statsApi.volume(undefined, days).catch(() => null),
         statsApi.personalRecords().catch(() => null),
+        statsApi.hrZones(days).catch(() => null),
       ]);
       insights = insightsResult;
       ctlData = ctlResult;
       volumeData = volumeResult;
       prData = prResult;
+      hrZoneData = hrZoneResult;
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to load insights';
     } finally {
@@ -128,6 +132,7 @@
       buildSportDistribution();
       buildWeeklyLoadChart();
       buildAcwrTrendChart();
+      buildHrZoneChart();
     }, 50);
   }
 
@@ -478,6 +483,90 @@
     ro.observe(acwrTrendContainer);
   }
 
+  const zoneColors = ['#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444'];
+  const zoneLabels = ['Z1 Recovery', 'Z2 Aerobic', 'Z3 Tempo', 'Z4 Threshold', 'Z5 VO2 Max'];
+
+  let hoveredZone = $state<number | null>(null);
+
+  function polar(cx: number, cy: number, r: number, a: number): [number, number] {
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  }
+
+  function buildHrZoneChart() {
+    if (!hrZoneContainer || !hrZoneData) return;
+    hrZoneContainer.innerHTML = '';
+
+    const vals = [hrZoneData.z1, hrZoneData.z2, hrZoneData.z3, hrZoneData.z4, hrZoneData.z5];
+    const total = vals.reduce((s, v) => s + v, 0);
+    if (total === 0) return;
+
+    const size = 280;
+    const cx = size / 2;
+    const cy = size / 2 + 4;
+    const outerR = 100;
+    const innerR = 64;
+    const gap = 0.04;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    svg.setAttribute('width', `${size}`);
+    svg.setAttribute('height', `${size}`);
+    svg.style.display = 'block';
+    svg.style.margin = '0 auto';
+
+    let startAngle = -Math.PI / 2;
+    vals.forEach((v, i) => {
+      if (v <= 0) return;
+      const sweep = (v / total) * Math.PI * 2 - gap;
+      const endAngle = startAngle + sweep;
+      const midAngle = startAngle + sweep / 2;
+
+      const [x1, y1] = polar(cx, cy, outerR, startAngle);
+      const [x2, y2] = polar(cx, cy, outerR, endAngle);
+      const [x3, y3] = polar(cx, cy, innerR, endAngle);
+      const [x4, y4] = polar(cx, cy, innerR, startAngle);
+
+      const large = sweep > Math.PI ? 1 : 0;
+      const d = `M ${x1} ${y1} A ${outerR} ${outerR} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerR} ${innerR} 0 ${large} 0 ${x4} ${y4} Z`;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', zoneColors[i]);
+      path.setAttribute('data-zone', String(i));
+      path.style.transition = 'opacity 0.15s';
+      path.style.cursor = 'pointer';
+
+      path.addEventListener('mouseenter', () => { hoveredZone = i; });
+      path.addEventListener('mouseleave', () => { hoveredZone = null; });
+      svg.appendChild(path);
+
+      startAngle = endAngle + gap;
+    });
+
+    const t1 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t1.setAttribute('x', `${cx}`);
+    t1.setAttribute('y', `${cy - 2}`);
+    t1.setAttribute('text-anchor', 'middle');
+    t1.setAttribute('dominant-baseline', 'middle');
+    t1.setAttribute('fill', '#1f2937');
+    t1.setAttribute('font-size', '20');
+    t1.setAttribute('font-weight', '700');
+    t1.textContent = `${(total / 3600).toFixed(1)}h`;
+    svg.appendChild(t1);
+
+    const t2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t2.setAttribute('x', `${cx}`);
+    t2.setAttribute('y', `${cy + 14}`);
+    t2.setAttribute('text-anchor', 'middle');
+    t2.setAttribute('dominant-baseline', 'middle');
+    t2.setAttribute('fill', '#6b7280');
+    t2.setAttribute('font-size', '11');
+    t2.textContent = 'total';
+    svg.appendChild(t2);
+
+    hrZoneContainer.appendChild(svg);
+  }
+
   function showTooltip(idx: number, activeChart: uPlot, type: 'pmc' | 'acwr' | 'volume' | 'weeklyLoad') {
     const tooltip = type === 'pmc' ? pmcTooltip : type === 'acwr' ? chartTooltip : type === 'volume' ? volumeTooltip : weeklyLoadTooltip;
     if (!tooltip) return;
@@ -800,7 +889,35 @@
       {/if}
     </div>
 
-    <!-- Section 4: Recovery Status -->
+    <!-- Section 4: HR Zone Distribution -->
+    {#if hrZoneData}
+      {@const total = hrZoneData.z1 + hrZoneData.z2 + hrZoneData.z3 + hrZoneData.z4 + hrZoneData.z5}
+      {#if total > 0}
+      <div class="section">
+        <h2 class="section-title">Heart Rate Zones</h2>
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>Zone Distribution</h3>
+            <div class="hr-zone-legend">
+              {#each zoneColors as color, i}
+                <span class="legend-item"><span class="legend-dot" style="background: {color}"></span>{zoneLabels[i]}</span>
+              {/each}
+            </div>
+            {#if hoveredZone !== null}
+              {@const v = [hrZoneData.z1, hrZoneData.z2, hrZoneData.z3, hrZoneData.z4, hrZoneData.z5][hoveredZone]}
+              {@const pct = ((v / total) * 100).toFixed(1)}
+              <span class="hr-zone-hover-label" style="color: {zoneColors[hoveredZone]}">{zoneLabels[hoveredZone]} — {(v / 3600).toFixed(1)}h ({pct}%)</span>
+            {/if}
+          </div>
+          <div class="hr-zone-donut-wrap">
+            <div bind:this={hrZoneContainer} class="hr-zone-donut"></div>
+          </div>
+        </div>
+      </div>
+      {/if}
+    {/if}
+
+    <!-- Section 5: Recovery Status -->
     {#if currentTsb !== null}
       <div class="section">
         <h2 class="section-title">Recovery Status</h2>
@@ -966,7 +1083,7 @@
   .chart-container {
     width: 100%;
   }
-  .pmc-legend, .volume-legend {
+  .pmc-legend, .volume-legend, .hr-zone-legend {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
@@ -996,6 +1113,21 @@
     background: rgba(34, 197, 94, 0.2);
     border: 1px solid rgba(34, 197, 94, 0.5);
     border-radius: 2px;
+  }
+  .hr-zone-donut-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 16px 0;
+  }
+  .hr-zone-donut {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .hr-zone-hover-label {
+    font-size: var(--font-size-sm, 12px);
+    font-weight: var(--font-weight-medium, 500);
+    transition: opacity 0.15s;
   }
   .acwr-zones {
     display: flex;

@@ -293,6 +293,23 @@ export const activitiesApi = {
   delete: (id: number) => api.del(`/activities/${id}`),
 };
 
+export interface HrZoneBucket {
+  period: string;
+  z1: number;
+  z2: number;
+  z3: number;
+  z4: number;
+  z5: number;
+}
+
+export interface HrZoneDistributionResponse {
+  z1: number;
+  z2: number;
+  z3: number;
+  z4: number;
+  z5: number;
+}
+
 export const statsApi = {
   dashboard: () => api.get<DashboardResponse>('/stats/dashboard'),
 
@@ -323,6 +340,9 @@ export const statsApi = {
   },
 
   availableYears: () => api.get<number[]>('/stats/available-years'),
+
+  hrZones: (days: number = 84) =>
+    api.get<HrZoneDistributionResponse>(`/stats/hr-zone-distribution?days=${days}`),
 };
 
 export const userApi = {

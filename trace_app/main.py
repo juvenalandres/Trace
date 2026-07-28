@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import datetime as dt
 import hashlib
+import json
 import logging
 import math
 import signal
@@ -110,6 +111,58 @@ async def recompute_training_loads():
                         logger.info(f"Recomputed CTL/ATL/TSB for user {user_id}")
         except Exception as e:
             logger.warning(f"Training load recomputation skipped: {e}")
+
+        # Backfill hr_zone_seconds for activities that don't have it yet
+        try:
+            async with async_session() as db:
+                from trace_app.models.activity import Activity
+                from trace_app.models.activity_stats import ActivityStats
+                from trace_app.models.user_zone import UserZone
+                from trace_app.services.activity_processor import compute_hr_zone_seconds
+
+                q = (
+                    select(ActivityStats)
+                    .join(Activity, Activity.id == ActivityStats.activity_id)
+                    .where(
+                        ActivityStats.simplified_time_series.isnot(None),
+                        ActivityStats.hr_zone_seconds.is_(None),
+                    )
+                )
+                rows = (await db.execute(q)).scalars().all()
+                if rows:
+                    logger.info(f"Backfilling hr_zone_seconds for {len(rows)} activities")
+                    updated = 0
+                    for stats in rows:
+                        act_q = select(Activity).where(Activity.id == stats.activity_id)
+                        activity = (await db.execute(act_q)).scalar_one_or_none()
+                        if not activity:
+                            continue
+                        zone_q = (
+                            select(UserZone)
+                            .where(UserZone.user_id == activity.user_id, UserZone.zone_type == "hr")
+                            .order_by(UserZone.valid_from.desc().nullslast())
+                            .limit(1)
+                        )
+                        user_zone = (await db.execute(zone_q)).scalar_one_or_none()
+                        if not user_zone:
+                            continue
+                        zones = []
+                        for i in range(1, 6):
+                            z_min = getattr(user_zone, f"zone_{i}_min", None)
+                            z_max = getattr(user_zone, f"zone_{i}_max", None)
+                            if z_min is not None and z_max is not None:
+                                zones.append({"min": z_min, "max": z_max})
+                        if not zones:
+                            continue
+                        ts_data = json.loads(stats.simplified_time_series)
+                        stats.hr_zone_seconds = compute_hr_zone_seconds(ts_data, zones)
+                        updated += 1
+                        if updated % 50 == 0:
+                            await db.flush()
+                    await db.commit()
+                    logger.info(f"Backfilled hr_zone_seconds for {updated} activities")
+        except Exception as e:
+            logger.warning(f"HR zone backfill skipped: {e}")
 
     asyncio.create_task(_run())
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -586,6 +639,26 @@ async def upload_activity(
         await update_daily_training_load(db, user, activity_date, session_load)
         # Backfill any gap days so CTL/ATL decay is reflected day-by-day
         await backfill_daily_loads(db, user.id, user.max_hr, user.resting_hr)
+
+    # Compute HR zone seconds from user zones + simplified time series
+    if result["simplified_time_series"]:
+        from trace_app.services.activity_processor import compute_hr_zone_seconds
+        hr_zone_q = select(UserZone).where(
+            UserZone.user_id == user.id, UserZone.zone_type == "hr"
+        ).order_by(UserZone.valid_from.desc().nullslast()).limit(1)
+        hr_zone_result = await db.execute(hr_zone_q)
+        user_zone = hr_zone_result.scalar_one_or_none()
+        if user_zone:
+            zones = []
+            for i in range(1, 6):
+                z_min = getattr(user_zone, f"zone_{i}_min", None)
+                z_max = getattr(user_zone, f"zone_{i}_max", None)
+                if z_min is not None and z_max is not None:
+                    zones.append({"min": z_min, "max": z_max})
+            if zones:
+                import json as _json
+                ts_data = _json.loads(result["simplified_time_series"])
+                stats.hr_zone_seconds = compute_hr_zone_seconds(ts_data, zones)
 
     # Match segment efforts
     if points and source != "manual":
@@ -1892,7 +1965,8 @@ async def training_insights(
 
     # Fill from SQL aggregation
     for row in week_rows:
-        key = str(row.week_start) if isinstance(row.week_start, date) else row.week_start
+        ws = row.week_start
+        key = ws.date().isoformat() if hasattr(ws, "date") else (ws.isoformat() if hasattr(ws, "isoformat") else str(ws))
         if key in weekly:
             weekly[key]["distance_m"] = round(row.distance_m or 0, 1)
             weekly[key]["duration_s"] = round(row.duration_s or 0, 1)
@@ -1902,7 +1976,8 @@ async def training_insights(
     # Build pace trends from SQL aggregation
     pace_data: dict[str, dict[str, float]] = {}
     for row in pace_rows:
-        key = str(row.week_start) if isinstance(row.week_start, date) else row.week_start
+        ws = row.week_start
+        key = ws.date().isoformat() if hasattr(ws, "date") else (ws.isoformat() if hasattr(ws, "isoformat") else str(ws))
         sport = row.sport_type or "other"
         if sport not in pace_data:
             pace_data[sport] = {}
@@ -1932,6 +2007,38 @@ async def training_insights(
         "consistency_streak": streak,
         "total_weeks": weeks_back,
     }
+
+
+@app.get("/api/stats/hr-zone-distribution")
+async def hr_zone_distribution(
+    days: int = Query(84, ge=7, le=548),
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Return total HR zone time (seconds per zone) for the given period."""
+    today = date.today()
+    start_date = today - timedelta(days=days)
+    start_dt = datetime.datetime.combine(start_date, datetime.time.min).replace(tzinfo=datetime.timezone.utc)
+
+    q = (
+        select(ActivityStats.hr_zone_seconds)
+        .join(Activity, Activity.id == ActivityStats.activity_id)
+        .where(
+            Activity.user_id == user.id,
+            Activity.start_time >= start_dt,
+            ActivityStats.hr_zone_seconds.isnot(None),
+        )
+    )
+    rows = (await db.execute(q)).scalars().all()
+
+    totals = {"z1": 0.0, "z2": 0.0, "z3": 0.0, "z4": 0.0, "z5": 0.0}
+    for hz in rows:
+        if not hz:
+            continue
+        for zi in ("z1", "z2", "z3", "z4", "z5"):
+            totals[zi] += hz.get(zi, 0.0)
+
+    return totals
 
 
 @app.get("/api/training/weekly-volume")

@@ -1,4 +1,4 @@
-from sqlalchemy import Float, ForeignKey, Integer, Text
+from sqlalchemy import Float, ForeignKey, Integer, JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from trace_app.database import Base
@@ -34,5 +34,6 @@ class ActivityStats(Base):
     min_lng: Mapped[float | None] = mapped_column(Float, default=None)
     max_lng: Mapped[float | None] = mapped_column(Float, default=None)
     training_load: Mapped[float | None] = mapped_column(Float, default=None)
+    hr_zone_seconds: Mapped[dict | None] = mapped_column(JSON, default=None)
 
     activity: Mapped["Activity"] = relationship(back_populates="stats")  # noqa: F821

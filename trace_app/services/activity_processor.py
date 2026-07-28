@@ -385,6 +385,36 @@ def compute_distance_splits_from_ts(
     return splits
 
 
+def compute_hr_zone_seconds(
+    simplified_ts: list[dict],
+    zones: list[dict],
+    bucket_s: int = 5,
+) -> dict[str, float]:
+    """Compute time (seconds) spent in each HR zone from simplified time series.
+
+    Args:
+        simplified_ts: List of time series dicts with 'hr' key.
+        zones: List of {min, max} dicts for each zone (e.g. 5 zones).
+        bucket_s: Seconds each sample represents.
+
+    Returns:
+        Dict like {"z1": 120.0, "z2": 300.0, ...} with seconds per zone.
+    """
+    result = {f"z{i + 1}": 0.0 for i in range(len(zones))}
+    for sample in simplified_ts:
+        hr = sample.get("hr")
+        if hr is None:
+            continue
+        for i, zone in enumerate(zones):
+            if zone["min"] <= hr < zone["max"]:
+                result[f"z{i + 1}"] += bucket_s
+                break
+        else:
+            if zones and hr >= zones[-1]["max"]:
+                result[f"z{len(zones)}"] += bucket_s
+    return result
+
+
 def process_activity(points: list[TrackPoint], session_overrides: dict | None = None) -> dict:
     stats = compute_stats(points)
     polyline = encode_polyline(points)

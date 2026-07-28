@@ -31,6 +31,8 @@
 │  │            │  │  /api/stats        │  │                      │  │
 │  │            │  │  /api/stats/heatmap│  │                      │  │
 │  │            │  │  /api/stats/years  │  │                      │  │
+│  │            │  │  /api/stats/hr-zone│  │                      │  │
+│  │            │  │  /distribution     │  │                      │  │
 │  │            │  │  /api/training/*   │  │                      │  │
 │  │            │  │  /api/users        │  │                      │  │
 │  └────────────┘  └────────┬───────────┘  └──────────────────────┘  │
@@ -98,7 +100,10 @@
 │  │                           simplified_time_series (JSON —       │    │
 │  │                           every Nth point), elevation_profile  │    │
 │  │                           (JSON), bounds (JSON — min/max       │    │
-│  │                           lat/lng)                             │    │
+│  │                           lat/lng),                            │    │
+│  │                           hr_zone_seconds (JSON — {z1..z5:    │    │
+│  │                           seconds}, pre-computed at upload     │    │
+│  │                           from user HR zones + time series)    │    │
 │  │                                                                │    │
 │  │  laps                    activity_id (FK), lap_index,          │    │
 │  │                           sport_type (enum), distance_m,       │    │
@@ -261,19 +266,25 @@
 │  ├─────────────────────────────────────────────────────────────────┤    │
 │  │                                                                 │    │
 │  │  Training Plans       Training Calendar      Training Insights  │    │
-│  │  (plan list cards,    (month/week toggle,     (4 sections:       │    │
+│  │  (plan list cards,    (month/week toggle,     (5 sections:       │    │
 │  │   plan detail with     month: sport chips     Overview,        │    │
 │  │   3-col session grid,  on dates; week:        Performance      │    │
 │  │   CRUD modals,         larger session cards   Management,      │    │
 │  │   sport/target badges, with sport, name,      Volume & Trends, │    │
-│  │   multi-target per     targets, status;       Recovery Status; │    │
-│  │   session)             day detail modal,       PMC chart, CTL/  │    │
-│  │                          weekly progress       ATL/TSB, ACWR,   │    │
-│  │                          bars, "View           sport load,      │    │
-│  │                          Activity →")          TSB zones,       │    │
+│  │   multi-target per     targets, status;       HR Zones,        │    │
+│  │   session)             day detail modal,       Recovery Status; │    │
+│  │                          weekly progress       PMC chart, CTL/  │    │
+│  │                          bars, "View           ATL/TSB, ACWR,   │    │
+│  │                          Activity →")          sport load,      │    │
+│  │                                                TSB zones,       │    │
 │  │                                                weekly volume    │    │
 │  │                                                with target      │    │
-│  │                                                reference lines) │    │
+│  │                                                reference lines, │    │
+│  │                                                stacked bar      │    │
+│  │                                                chart of time    │    │
+│  │                                                spent in each    │    │
+│  │                                                HR zone per      │    │
+│  │                                                week)            │    │
 │  │                                                                 │    │
 │  │  Route Planner                                                │    │
 │  │  (Leaflet map,        (draggable waypoint   (uPlot elevation    │    │
@@ -372,7 +383,8 @@
 │  │                                        reuse detection          │    │
 │  │  Caching          TTLCache (in-memory) 256 entries, 60s TTL   │    │
 │  │  Background       Activity upload, page load   CTL/ATL/TSB recomputation, │    │
-│  │                                        zero-load day backfill  │    │
+│  │                                        zero-load day backfill,    │    │
+│  │                                        HR zone seconds backfill   │    │
 │  │  Container        Docker Compose      PostgreSQL + app active  │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -573,13 +585,26 @@
                   │  → POST /api/users (update UserZone)         │
                   │  → stored in fitness_tests table              │
                   │                                              │
-                  │  Admin:                                      │
-                 │  First registration → is_admin=true          │
-                 │  Profile → /api/users (admin-only)           │
-                 │  → user list with role badges               │
-                 │  Toggle admin → PUT /api/users/{id}/admin   │
-                 │    (admin-only, cannot self-modify)         │
-                 └──────────────────────────────────────────────┘
+                   │  Admin:                                      │
+                  │  First registration → is_admin=true          │
+                  │  Profile → /api/users (admin-only)           │
+                  │  → user list with role badges               │
+                  │  Toggle admin → PUT /api/users/{id}/admin   │
+                  │    (admin-only, cannot self-modify)         │
+                  │                                              │
+                  │  HR Zone Distribution:                       │
+                  │  Activity upload → compute_hr_zone_seconds() │
+                  │    reads user's HR zones (UserZone),         │
+                  │    buckets simplified_time_series HR samples │
+                  │    into 5 zones, stores {z1..z5: seconds}   │
+                  │    in activity_stats.hr_zone_seconds          │
+                  │  Startup → backfills existing activities     │
+                  │    that lack hr_zone_seconds                  │
+                  │  GET /api/stats/hr-zone-distribution         │
+                  │    ?days=84&period=week|month                 │
+                  │    → sums zone seconds per bucket            │
+                  │    → frontend stacked bar chart (Z1-Z5)      │
+                  └──────────────────────────────────────────────┘
 ```
 
 ## Data Processing Pipeline
