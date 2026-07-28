@@ -196,42 +196,43 @@
     };
   }
 
-  async function loadRoutesElevation(start: [number, number], end: [number, number]) {
+  function interpolatePoints(start: [number, number], end: [number, number], count: number): [number, number][] {
+    const points: [number, number][] = [];
+    for (let i = 0; i <= count; i++) {
+      const t = i / count;
+      points.push([
+        start[0] + (end[0] - start[0]) * t,
+        start[1] + (end[1] - start[1]) * t,
+      ]);
+    }
+    return points;
+  }
+
+  async function loadDirectElevation(start: [number, number], end: [number, number]) {
     elevationLoading = true;
     elevationError = '';
     distance = null;
 
     try {
-      let bestPolyline = '';
-      let bestSi = 0, bestEi = 0;
-      let bestDist = Infinity;
+      let routeCoords: [number, number][];
+      let routeDistance: number;
 
-      for (const route of routes) {
-        const coords = decodePolyline(route.polyline);
-        if (coords.length < 2) continue;
-
-        const si = findClosestIdx(coords, start);
-        const ei = findClosestIdx(coords, end);
-        const sDist = (coords[si][0] - start[0]) ** 2 + (coords[si][1] - start[1]) ** 2;
-        const eDist = (coords[ei][0] - end[0]) ** 2 + (coords[ei][1] - end[1]) ** 2;
-        const avg = (sDist + eDist) / 2;
-
-        if (avg < bestDist) {
-          bestDist = avg;
-          bestPolyline = route.polyline;
-          bestSi = Math.min(si, ei);
-          bestEi = Math.max(si, ei);
-        }
+      try {
+        const planResp = await routeApi.plan([
+          { lat: start[0], lng: start[1] },
+          { lat: end[0], lng: end[1] },
+        ]);
+        routeCoords = decodePolyline(planResp.polyline);
+        routeDistance = Math.round(planResp.distance_m);
+      } catch {
+        routeCoords = interpolatePoints(start, end, 20);
+        routeDistance = Math.round(haversine(start[0], start[1], end[0], end[1]));
       }
 
-      if (!bestPolyline) { elevationError = 'Could not find matching route'; return; }
+      if (routeCoords.length < 2) { elevationError = 'Not enough route data'; return; }
 
-      const coords = decodePolyline(bestPolyline);
-      const segCoords = coords.slice(bestSi, bestEi + 1);
-      if (segCoords.length < 2) { elevationError = 'Segment too short'; return; }
-
-      const step = Math.max(1, Math.floor(segCoords.length / 100));
-      const sampled = segCoords.filter((_, i) => i % step === 0 || i === segCoords.length - 1);
+      const step = Math.max(1, Math.floor(routeCoords.length / 100));
+      const sampled = routeCoords.filter((_, i) => i % step === 0 || i === routeCoords.length - 1);
 
       const resp = await routeApi.elevation(sampled.map(c => ({ lat: c[0], lng: c[1] })));
       if (resp.elevation_profile.length < 2) { elevationError = 'Not enough elevation data'; return; }
@@ -241,20 +242,15 @@
         eles: new Float64Array(resp.elevation_profile.map(p => p.elevation)),
       };
       elevationGain = resp.elevation_gain_m;
-      segmentCoords = segCoords;
-
-      // Compute actual route distance along the segment coords
-      let routeDist = 0;
-      for (let i = 1; i < segCoords.length; i++) {
-        routeDist += haversine(segCoords[i - 1][0], segCoords[i - 1][1], segCoords[i][0], segCoords[i][1]);
-      }
-      distance = Math.round(routeDist);
+      segmentCoords = routeCoords;
+      distance = routeDistance;
     } catch (e: unknown) {
       elevationError = e instanceof Error ? e.message : 'Failed to load elevation';
     } finally {
       elevationLoading = false;
     }
   }
+
 
   $effect(() => {
     const start = startCoord;
@@ -282,16 +278,10 @@
       return;
     }
 
-    // Routes mode (async — fetch elevation from API)
-    if (routes.length > 0) {
-      elevationChartData = null;
-      elevationGain = null;
-      loadRoutesElevation(start, end);
-      return;
-    }
-
+    // Standalone mode — always use direct elevation lookup (straight line)
     elevationChartData = null;
     elevationGain = null;
+    loadDirectElevation(start, end);
   });
 
   function showTooltip(idx: number) {
@@ -445,9 +435,12 @@
         onEndSelect={handleEndSelect}
       />
     {:else}
-      <div class="no-route-data">
-        No route data available. Activities with GPS tracks are needed to create segments.
-      </div>
+      <SegmentPickerMap
+        {startCoord}
+        {endCoord}
+        onStartSelect={handleStartSelect}
+        onEndSelect={handleEndSelect}
+      />
     {/if}
 
     <div class="segment-coords">
@@ -546,15 +539,6 @@
   .coord-distance {
     font-weight: 500;
     color: var(--text);
-  }
-  .no-route-data {
-    padding: 24px;
-    text-align: center;
-    color: var(--text-secondary);
-    font-size: var(--font-size-base, 13px);
-    background: var(--bg);
-    border-radius: 8px;
-    border: 0.5px solid var(--border);
   }
   .field {
     display: flex;
