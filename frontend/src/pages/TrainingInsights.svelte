@@ -483,7 +483,7 @@
     ro.observe(acwrTrendContainer);
   }
 
-  const zoneColors = ['#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444'];
+  const zoneColors = ['#F09595', '#E24B4A', '#A32D2D', '#791F1F', '#501313'];
   const zoneLabels = ['Z1 Recovery', 'Z2 Aerobic', 'Z3 Tempo', 'Z4 Threshold', 'Z5 VO2 Max'];
 
   let hoveredZone = $state<number | null>(null);
