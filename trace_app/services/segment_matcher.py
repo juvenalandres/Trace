@@ -15,6 +15,22 @@ logger = logging.getLogger(__name__)
 DEFAULT_MATCH_RADIUS_M = 50
 
 
+def _interp_closest(
+    p1_lat: float, p1_lng: float,
+    p2_lat: float, p2_lng: float,
+    t_lat: float, t_lng: float,
+) -> tuple[float, float, float]:
+    """Find the point on segment p1→p2 closest to target.
+    Returns (lat, lng, t) where t ∈ [0,1] is the interpolation parameter."""
+    dy = p2_lat - p1_lat
+    dx = p2_lng - p1_lng
+    len_sq = dx * dx + dy * dy
+    if len_sq == 0:
+        return p1_lat, p1_lng, 0.0
+    t = max(0.0, min(1.0, ((t_lng - p1_lng) * dx + (t_lat - p1_lat) * dy) / len_sq))
+    return p1_lat + t * dy, p1_lng + t * dx, t
+
+
 def _parse_activity_raw_file(file_path: str) -> list[TrackPoint] | None:
     """Parse a stored raw file (GPX or FIT) back into TrackPoints."""
     path = Path(file_path)

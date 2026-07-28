@@ -10,6 +10,7 @@ from trace_app.models.enums import (
     TargetType,
     ZoneType,
 )
+from trace_app.models.fitness_test import FitnessTest
 from trace_app.models.gear import Gear
 from trace_app.models.lap import Lap
 from trace_app.models.refresh_token import RefreshToken
@@ -27,6 +28,7 @@ __all__ = [
     "Activity",
     "ActivityStats",
     "DailyTrainingLoad",
+    "FitnessTest",
     "Gear",
     "GearType",
     "Lap",

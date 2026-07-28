@@ -27,6 +27,7 @@
 │  │            │  │  /api/segments/:id/│  │                      │  │
 │  │            │  │  match (manual     │  │                      │  │
 │  │            │  │  back-fill)        │  │                      │  │
+│  │            │  │  /api/tests        │  │                      │  │
 │  │            │  │  /api/stats        │  │                      │  │
 │  │            │  │  /api/stats/heatmap│  │                      │  │
 │  │            │  │  /api/stats/years  │  │                      │  │
@@ -173,7 +174,14 @@
 │  │                           user_id (FK), elapsed_time_s,        │    │
 │  │                           avg_speed, avg_hr, avg_power,        │    │
 │  │                           start_time, created_at               │    │
-│  │                           Unique on (segment_id, activity_id)  │    │
+│  │                           Unique on (segment_id, activity_id,  │    │
+│  │                           start_time)                          │    │
+│  │                                                                │    │
+│  │  fitness_tests        user_id (FK), test_type                  │    │
+│  │                       (enum: ftp/lthr/threshold/max_hr),       │    │
+│  │                       value, unit, notes, file_path            │    │
+│  │                       (FIT file on disk), start_time,          │    │
+│  │                       end_time, duration_s, created_at         │    │
 │  │                                                                │    │
 │  │  Indexes:                                                      │    │
 │  │  ────────                                                      │    │
@@ -273,6 +281,14 @@
 │  │   waypoints,           road snapping,        elevation gain,   │    │
 │  │   Esri tiles)          polyline update)      GPX export,       │    │
 │  │                                                save/load routes)│    │
+│  │                                                                 │    │
+│  │  Fitness Tests                                                 │    │
+│  │  (FTP / LTHR / Threshold / Max HR)                             │    │
+│  │  Upload FIT file → parse + show uPlot chart                    │    │
+│  │  with selection overlay + range sliders                        │    │
+│  │  → compute result (max power, avg HR, avg speed)               │    │
+│  │  LTHR test auto-calibrates HR zones                            │    │
+│  │  → POST /api/tests, stored in fitness_tests table              │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
@@ -377,7 +393,7 @@
 │  ┌───────────────────────────────────────────────────────────────┐      │
 │  │  Open-Meteo Elevation API                                     │      │
 │  │  (free, no key, 90m resolution worldwide — elevation          │      │
-│  │   profiles for route planner)                                  │      │
+│  │   profiles for route planner + standalone segment creation)   │      │
 │  └───────────────────────────────────────────────────────────────┘      │
 │  ┌───────────────────────────────────────────────────────────────┐      │
 │  │  Garmin Connect / Fitbit / Wahoo / Polar                       │      │
@@ -485,17 +501,25 @@
                  │  Save → POST /api/routes → DB               │
                  │  Export → generate GPX from waypoints       │
                  │                                              │
-                  │  Segments (v2):                              │
-                  │  Bidirectional matching:                     │
-                  │                                                │
-                  │  New activity → scan all segments:           │
-                  │  Activity upload → ActivityProcessor         │
-                  │  → SegmentMatcher checks all segments      │
-                  │    (haversine distance, 50m tolerance)       │
-                  │  → If activity passes start + end points   │
-                  │    → create SegmentEffort (elapsed time,   │
-                  │      avg speed, avg HR, avg power)           │
-                  │                                                │
+                   │  Segments (v2):                              │
+                   │  Bidirectional matching:                     │
+                   │                                                │
+                   │  New activity → scan all segments:           │
+                   │  Activity upload → ActivityProcessor         │
+                   │  → SegmentMatcher checks all segments      │
+                   │    (haversine distance, 50m tolerance)       │
+                   │  → For each segment, walks activity points  │
+                   │    to find all start→end pairs               │
+                   │  → Validates effort distance is within      │
+                   │    10% of segment's stored distance_m        │
+                   │  → Picks the best match (closest distance)  │
+                   │    for each pass, then jumps past end point │
+                   │    to find the next pass                     │
+                   │  → Supports multiple passes per segment    │
+                   │    (e.g. out-and-back = 2 efforts)          │
+                   │  → Dedup by (segment_id, activity_id,      │
+                   │    start_time) to avoid re-adding on re-run │
+                   │                                                │
                   │  Back-match old activities (manual):          │
                   │  Segment detail page → "Match Activities"   │
                   │  button → POST /api/segments/{id}/match    │
@@ -504,17 +528,25 @@
                   │  activities matching sport_type → runs     │
                   │  same haversine check → creates efforts   │
                   │                                                │
-                  │  Two creation modes:                          │
-                  │  1. From Activity Detail: Click "Create       │
-                  │     Segment" → modal opens inline showing     │
-                  │     the activity's single route on the map   │
-                  │     → pick start/end points → POST            │
-                  │  2. From Segments page: Click "Create         │
-                  │     Segment" → fetches all user's activity    │
-                  │     routes (GET /api/stats/activity-routes)  │
-                  │     → modal opens showing ALL routes as       │
-                  │     thin overlay lines on the map             │
-                  │     → pick start/end points on any route      │
+                   │  Two creation modes:                          │
+                   │  1. From Activity Detail: Click "Create       │
+                   │     Segment" → modal opens inline showing     │
+                   │     the activity's single route on the map   │
+                   │     → pick start/end points → segment is     │
+                   │     snapped to the activity's polyline       │
+                   │     → POST                                    │
+                   │  2. From Segments page: Click "Create        │
+                   │     Segment" → map opens centered on user's  │
+                   │     geolocation (or fallback)                │
+                   │     → pick start/end points → straight-line  │
+                   │     distance (haversine) + Open-Meteo        │
+                   │     elevation along the line                 │
+                   │     → POST                                    │
+                   │                                              │
+                   │  In both modes, routes are shown as thin     │
+                   │  overlay lines on the map for visual         │
+                   │  reference only — they do NOT affect the     │
+                   │  segment's distance or elevation.            │
                   │                                                │
                   │  Segment detail page:                         │
                   │  Full-page view (replaces old sidebar)        │
@@ -523,13 +555,25 @@
                   │  → PR card, leaderboard, paginated efforts  │
                   │  → Edit, delete, match actions in top bar   │
                   │                                                │
-                  │  SegmentPickerMap (self-contained Leaflet)    │
-                  │  Click start + end points, auto-distance      │
-                  │  → POST /api/segments                        │
-                  │  Uses onMount/onDestroy for reliable          │
-                  │  lifecycle (no bind:this + $effect)          │
-                 │                                              │
-                 │  Admin:                                      │
+                   │  SegmentPickerMap (self-contained Leaflet)    │
+                   │  Click start + end points, straight-line      │
+                   │  distance (haversine) + Open-Meteo elevation  │
+                   │  → POST /api/segments                        │
+                   │  Centered on user geolocation when no route   │
+                   │  Uses onMount/onDestroy for reliable          │
+                   │  lifecycle (no bind:this + $effect)          │
+                  │                                              │
+                  │  Fitness Tests:                               │
+                  │  Upload FIT file → POST /api/tests           │
+                  │  → FIT parser extracts session + records     │
+                  │  → uPlot chart with selection overlay        │
+                  │  → user drags range sliders to select window │
+                  │  → compute result (max power / avg HR / etc) │
+                  │  LTHR test → auto-calibrate HR zones         │
+                  │  → POST /api/users (update UserZone)         │
+                  │  → stored in fitness_tests table              │
+                  │                                              │
+                  │  Admin:                                      │
                  │  First registration → is_admin=true          │
                  │  Profile → /api/users (admin-only)           │
                  │  → user list with role badges               │

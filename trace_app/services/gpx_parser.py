@@ -17,6 +17,7 @@ class TrackPoint:
     power: int | None = None
     speed: float | None = None
     temp: float | None = None
+    speed: float | None = None
 
 
 def _strip_ns(tag: str) -> str:

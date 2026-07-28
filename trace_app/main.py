@@ -222,6 +222,9 @@ async def request_middleware(request: Request, call_next):
 app.include_router(auth_router)
 app.include_router(segments_router)
 
+from trace_app.routers.fitness_tests import router as fitness_tests_router
+app.include_router(fitness_tests_router)
+
 
 @app.get("/api/health")
 async def health():
@@ -787,7 +790,29 @@ async def delete_activity(
     if not activity:
         raise HTTPException(status_code=404, detail="Activity not found")
 
-    # Delete segment efforts referencing this activity
+    from trace_app.models.activity_stats import ActivityStats
+    from trace_app.models.daily_training_load import DailyTrainingLoad
+    from trace_app.services.training_load import recompute_ctl_atl_tsb
+
+    stats_q = select(ActivityStats.training_load).where(ActivityStats.activity_id == activity_id)
+    trimp_result = await db.execute(stats_q)
+    trimp = trimp_result.scalar_one_or_none()
+
+    activity_date = activity.start_time.date()
+
+    if trimp and trimp > 0:
+        daily_q = select(DailyTrainingLoad).where(
+            DailyTrainingLoad.user_id == user.id,
+            DailyTrainingLoad.date == activity_date,
+        )
+        daily = (await db.execute(daily_q)).scalar_one_or_none()
+        if daily:
+            daily.training_load -= trimp
+            if daily.training_load <= 0:
+                daily.training_load = 0.0
+            await db.flush()
+            await recompute_ctl_atl_tsb(db, user.id, activity_date, user.max_hr, user.resting_hr)
+
     effort_q = select(SegmentEffort).where(SegmentEffort.activity_id == activity_id)
     efforts = (await db.execute(effort_q)).scalars().all()
     for e in efforts:
