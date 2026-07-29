@@ -1,4 +1,4 @@
-```text
+﻿```text
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                              TRACE                         │
 │                       Architecture Overview                              │
@@ -33,6 +33,8 @@
 │  │            │  │  /api/stats/years  │  │                      │  │
 │  │            │  │  /api/stats/hr-zone│  │                      │  │
 │  │            │  │  /distribution     │  │                      │  │
+│  │            │  │  /api/stats/hr-zone│  │                      │  │
+│  │            │  │  /weekly           │  │                      │  │
 │  │            │  │  /api/training/*   │  │                      │  │
 │  │            │  │  /api/users        │  │                      │  │
 │  └────────────┘  └────────┬───────────┘  └──────────────────────┘  │
@@ -271,21 +273,21 @@
 │  │   3-col session grid,  on dates; week:        Performance      │    │
 │  │   CRUD modals,         larger session cards   Management,      │    │
 │  │   sport/target badges, with sport, name,      Volume & Trends, │    │
-│  │   multi-target per     targets, status;       HR Zones,        │    │
-│  │   session)             day detail modal,       Recovery Status; │    │
-│  │                          weekly progress       PMC chart, CTL/  │    │
-│  │                          bars, "View           ATL/TSB, ACWR,   │    │
-│  │                          Activity →")          sport load,      │    │
-│  │                                                TSB zones,       │    │
-│  │                                                weekly volume    │    │
-│  │                                                with target      │    │
-│  │                                                reference lines, │    │
-│  │                                                stacked bar      │    │
-│  │                                                chart of time    │    │
-│  │                                                spent in each    │    │
-│  │                                                HR zone per      │    │
-│  │                                                week)            │    │
-│  │                                                                 │    │
+│  │   multi-target per     targets, status;       HR Zones (donut + weekly stacked area trend chart side by side),  │    │
+│  │   session)             day detail modal,       Recovery Status;                                              │    │
+│  │                          weekly progress       PMC chart, CTL/                                             │    │
+│  │                          bars, "View           ATL/TSB, ACWR,                                              │    │
+│  │                          Activity →")          sport load,                                                 │    │
+│  │                                                TSB zones,                                                  │    │
+│  │                                                weekly volume                                               │    │
+│  │                                                with target                                                 │    │
+│  │                                                reference lines,                                            │    │
+│  │                                                stacked bar                                                 │    │
+│  │                                                chart of time                                               │    │
+│  │                                                spent in each                                               │    │
+│  │                                                HR zone per                                                 │    │
+│  │                                                week)                                                       │    │
+│  │                                                                                                           │    │
 │  │  Route Planner                                                │    │
 │  │  (Leaflet map,        (draggable waypoint   (uPlot elevation    │    │
 │  │   click-to-add         markers, OSRM         chart, distance,  │    │

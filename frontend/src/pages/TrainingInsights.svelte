@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { trainingApi, statsApi } from '$lib/api/types';
-  import type { TrainingInsights, CtlResponse, VolumeResponse, PersonalRecordsResponse, HrZoneDistributionResponse } from '$lib/api/types';
+  import type { TrainingInsights, CtlResponse, VolumeResponse, PersonalRecordsResponse, HrZoneDistributionResponse, HrZoneWeeklyResponse } from '$lib/api/types';
   import uPlot from 'uplot';
   import 'uplot/dist/uPlot.min.css';
   import Icon from '$lib/components/Icon.svelte';
@@ -14,6 +14,7 @@
   let volumeData = $state<VolumeResponse | null>(null);
   let prData = $state<PersonalRecordsResponse | null>(null);
   let hrZoneData = $state<HrZoneDistributionResponse | null>(null);
+  let hrZoneWeeklyData = $state<HrZoneWeeklyResponse | null>(null);
   let loading = $state(true);
   let error = $state('');
 
@@ -61,6 +62,7 @@
   let weeklyLoadContainer: HTMLDivElement;
   let acwrTrendContainer: HTMLDivElement;
   let hrZoneContainer: HTMLDivElement;
+  let hrZoneTrendContainer: HTMLDivElement;
   let volumeTooltip: HTMLDivElement;
   let weeklyLoadTooltip: HTMLDivElement;
   let pmcTooltip: HTMLDivElement;
@@ -108,18 +110,20 @@
     error = '';
     const days = activeDays;
     try {
-      const [insightsResult, ctlResult, volumeResult, prResult, hrZoneResult] = await Promise.all([
+      const [insightsResult, ctlResult, volumeResult, prResult, hrZoneResult, hrZoneWeeklyResult] = await Promise.all([
         trainingApi.insights(days),
         trainingApi.ctl(days).catch(() => null),
         statsApi.volume(undefined, days).catch(() => null),
         statsApi.personalRecords().catch(() => null),
         statsApi.hrZones(days).catch(() => null),
+        statsApi.hrZoneWeekly(days).catch(() => null),
       ]);
       insights = insightsResult;
       ctlData = ctlResult;
       volumeData = volumeResult;
       prData = prResult;
       hrZoneData = hrZoneResult;
+      hrZoneWeeklyData = hrZoneWeeklyResult;
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to load insights';
     } finally {
@@ -133,6 +137,7 @@
       buildWeeklyLoadChart();
       buildAcwrTrendChart();
       buildHrZoneChart();
+      buildHrZoneTrendChart();
     }, 50);
   }
 
@@ -586,6 +591,88 @@
     hrZoneContainer.appendChild(svg);
   }
 
+  function buildHrZoneTrendChart() {
+    if (!hrZoneTrendContainer || !hrZoneWeeklyData || hrZoneWeeklyData.weekly.length < 2) return;
+    hrZoneTrendContainer.innerHTML = '';
+
+    const data = hrZoneWeeklyData.weekly;
+    const timestamps = data.map(w => new Date(w.week_start).getTime() / 1000);
+    const seriesData: uPlot.AlignedData = [
+      new Float64Array(timestamps),
+      new Float64Array(data.map(w => w.z1)),
+      new Float64Array(data.map(w => w.z2)),
+      new Float64Array(data.map(w => w.z3)),
+      new Float64Array(data.map(w => w.z4)),
+      new Float64Array(data.map(w => w.z5)),
+    ];
+
+    const opts: uPlot.Options = {
+      width: hrZoneTrendContainer.clientWidth || 400,
+      height: 240,
+      cursor: { show: false },
+      legend: { show: false },
+      axes: [
+        {
+          stroke: '#6b7280',
+          grid: { stroke: 'rgba(107,114,128,0.15)' },
+          ticks: { stroke: 'rgba(107,114,128,0.3)' },
+          values: (_self: uPlot, ticks: number[]) => ticks.map(t => {
+            const d = new Date(t * 1000);
+            return `${d.getDate()}/${d.getMonth() + 1}`;
+          }),
+        },
+        {
+          stroke: '#6b7280',
+          grid: { stroke: 'rgba(107,114,128,0.15)' },
+          ticks: { stroke: 'rgba(107,114,128,0.3)' },
+          size: 50,
+          values: (_self: uPlot, ticks: number[]) => ticks.map(v => `${(v / 3600).toFixed(0)}h`),
+        },
+      ],
+      series: [
+        {},
+        {
+          label: 'Z1',
+          fill: zoneColors[0] + '80',
+          stroke: zoneColors[0],
+          width: 1,
+          points: { show: false },
+        },
+        {
+          label: 'Z2',
+          fill: zoneColors[1] + '80',
+          stroke: zoneColors[1],
+          width: 1,
+          points: { show: false },
+        },
+        {
+          label: 'Z3',
+          fill: zoneColors[2] + '80',
+          stroke: zoneColors[2],
+          width: 1,
+          points: { show: false },
+        },
+        {
+          label: 'Z4',
+          fill: zoneColors[3] + '80',
+          stroke: zoneColors[3],
+          width: 1,
+          points: { show: false },
+        },
+        {
+          label: 'Z5',
+          fill: zoneColors[4] + '80',
+          stroke: zoneColors[4],
+          width: 1,
+          points: { show: false },
+        },
+      ],
+    };
+
+    const chart = new uPlot(opts, seriesData, hrZoneTrendContainer);
+    charts.push(chart);
+  }
+
   function showTooltip(idx: number, activeChart: uPlot, type: 'pmc' | 'acwr' | 'volume' | 'weeklyLoad') {
     const tooltip = type === 'pmc' ? pmcTooltip : type === 'acwr' ? chartTooltip : type === 'volume' ? volumeTooltip : weeklyLoadTooltip;
     if (!tooltip) return;
@@ -928,6 +1015,16 @@
             <div bind:this={hrZoneTooltip} class="chart-tooltip" style="display:none;"></div>
           </div>
         </div>
+        {#if hrZoneWeeklyData && hrZoneWeeklyData.weekly.length >= 2}
+        <div class="chart-card" style="margin-top: 16px;">
+          <div class="chart-header">
+            <h3>Weekly Zone Trend</h3>
+          </div>
+          <div class="hr-zone-trend-wrap">
+            <div bind:this={hrZoneTrendContainer} class="hr-zone-trend"></div>
+          </div>
+        </div>
+        {/if}
       </div>
       {/if}
     {/if}
@@ -1139,9 +1236,11 @@
     justify-content: center;
     align-items: center;
   }
-  .hr-zone-donut-wrap {
-    display: flex;
-    gap: 6px;
+  .hr-zone-trend-wrap {
+    min-height: 240px;
+  }
+  .hr-zone-trend {
+    width: 100%;
   }
   .zone {
     font-size: var(--font-size-xs, 11px);

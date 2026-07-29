@@ -302,6 +302,19 @@ export interface HrZoneBucket {
   z5: number;
 }
 
+export interface HrZoneWeeklyBucket {
+  week_start: string;
+  z1: number;
+  z2: number;
+  z3: number;
+  z4: number;
+  z5: number;
+}
+
+export interface HrZoneWeeklyResponse {
+  weekly: HrZoneWeeklyBucket[];
+}
+
 export interface HrZoneDistributionResponse {
   z1: number;
   z2: number;
@@ -343,6 +356,9 @@ export const statsApi = {
 
   hrZones: (days: number = 84) =>
     api.get<HrZoneDistributionResponse>(`/stats/hr-zone-distribution?days=${days}`),
+
+  hrZoneWeekly: (days: number = 84) =>
+    api.get<HrZoneWeeklyResponse>(`/stats/hr-zone-weekly?days=${days}`),
 };
 
 export const userApi = {

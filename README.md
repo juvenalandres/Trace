@@ -20,7 +20,7 @@ Upload GPX/FIT files or log activities manually. Visualize volume, pace, elevati
 - **Activity tracking** -- GPX and FIT upload, manual entry, gear assignment
 - **Data visualization** -- volume charts, personal records, sport breakdown, heatmap (uPlot + Leaflet)
 - **Zone analysis** -- configurable HR and power zones with collapsible cards
-- **HR zone distribution** -- pre-computed per-activity zone time; weekly/monthly stacked bar chart on Training Insights
+- **HR zone distribution** -- pre-computed per-activity zone time; aggregate donut chart and weekly trend chart on Training Insights
 - **Training load** -- CTL, ATL, TSB with exponential decay across gap days
 - **Training plans** -- calendar-based planning with structured session targets (distance, duration, pace, HR, RPE)
 - **Year-in-review** -- monthly breakdown, PRs, favorite month/sport (Planned)

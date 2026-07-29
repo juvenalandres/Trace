@@ -2041,6 +2041,53 @@ async def hr_zone_distribution(
     return totals
 
 
+@app.get("/api/stats/hr-zone-weekly")
+async def hr_zone_weekly(
+    days: int = Query(84, ge=7, le=548),
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Return weekly HR zone time buckets for the given period."""
+    today = date.today()
+    start_date = today - timedelta(days=days)
+    start_dt = datetime.datetime.combine(start_date, datetime.time.min).replace(tzinfo=datetime.timezone.utc)
+
+    bucket_start = start_date - timedelta(days=start_date.weekday())
+    weeks_back = max(1, ((today - bucket_start).days // 7) + 1)
+
+    q = (
+        select(Activity.start_time, ActivityStats.hr_zone_seconds)
+        .join(ActivityStats, ActivityStats.activity_id == Activity.id)
+        .where(
+            Activity.user_id == user.id,
+            Activity.start_time >= start_dt,
+            ActivityStats.hr_zone_seconds.isnot(None),
+        )
+    )
+    rows = (await db.execute(q)).all()
+
+    buckets: dict[str, dict] = {}
+    for i in range(weeks_back):
+        wk = bucket_start + timedelta(weeks=i)
+        key = wk.isoformat()
+        buckets[key] = {"week_start": key, "z1": 0.0, "z2": 0.0, "z3": 0.0, "z4": 0.0, "z5": 0.0}
+
+    for row in rows:
+        st = row.start_time
+        wk_start = st.date() - timedelta(days=st.date().weekday())
+        key = wk_start.isoformat()
+        hz = row.hr_zone_seconds
+        if key in buckets and hz:
+            for zi in ("z1", "z2", "z3", "z4", "z5"):
+                buckets[key][zi] += hz.get(zi, 0.0)
+
+    for bk in buckets.values():
+        for zi in ("z1", "z2", "z3", "z4", "z5"):
+            bk[zi] = round(bk[zi], 1)
+
+    return {"weekly": sorted(buckets.values(), key=lambda w: w["week_start"])}
+
+
 @app.get("/api/training/weekly-volume")
 async def training_weekly_volume(
     plan_id: int,
