@@ -1,6 +1,9 @@
 import datetime
+import json
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+
+from trace_app.schemas.workout import parse_interval_json, validate_interval_json
 
 
 class SessionTarget(BaseModel):
@@ -20,6 +23,8 @@ class TrainingSessionCreate(BaseModel):
     rest_day: bool = False
     block_id: int | None = None
 
+    _validate_intervals = field_validator("intervals")(validate_interval_json)
+
 
 class TrainingSessionUpdate(BaseModel):
     scheduled_date: datetime.date | None = None
@@ -30,7 +35,10 @@ class TrainingSessionUpdate(BaseModel):
     intervals: str | None = Field(default=None, max_length=10000)
     notes: str | None = Field(default=None, max_length=10000)
     rest_day: bool | None = None
+    block_id: int | None = None
     status: str | None = Field(default=None, max_length=20)
+
+    _validate_intervals = field_validator("intervals")(validate_interval_json)
 
 
 class TrainingSessionResponse(BaseModel):
@@ -56,18 +64,10 @@ class TrainingSessionResponse(BaseModel):
     def coerce_none_targets(cls, v):
         return [] if v is None else v
 
-
-class TrainingSessionUpdate(BaseModel):
-    scheduled_date: datetime.date | None = None
-    sport_type: str | None = Field(default=None, max_length=50)
-    name: str | None = Field(default=None, max_length=255)
-    description: str | None = Field(default=None, max_length=10000)
-    targets: list[SessionTarget] | None = None
-    intervals: str | None = Field(default=None, max_length=10000)
-    notes: str | None = Field(default=None, max_length=10000)
-    rest_day: bool | None = None
-    block_id: int | None = None
-    status: str | None = Field(default=None, max_length=20)
+    @computed_field
+    @property
+    def parsed_intervals(self) -> dict | None:
+        return parse_interval_json(self.intervals)
 
 
 class TrainingBlockCreate(BaseModel):

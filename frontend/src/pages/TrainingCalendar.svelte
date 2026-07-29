@@ -3,6 +3,7 @@
   import { trainingApi } from '$lib/api/types';
   import type { TrainingPlan, TrainingSession, WeeklyVolumeResponse, WeeklyVolumeWeek } from '$lib/api/types';
   import Icon from '$lib/components/Icon.svelte';
+  import WorkoutView from '$lib/components/WorkoutView.svelte';
   import Modal from '$lib/components/Modal.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorBanner from '$lib/components/ErrorBanner.svelte';
@@ -551,14 +552,9 @@
               </div>
 
               {#if s.intervals}
-                {@const items = s.intervals.split(',').map(i => i.trim()).filter(Boolean)}
                 <div class="sdb-section">
-                  <div class="sdb-section-title">Intervals ({items.length})</div>
-                  <ul class="sdb-interval-list">
-                    {#each items as item}
-                      <li class="sdb-interval-item">{item}</li>
-                    {/each}
-                  </ul>
+                  <div class="sdb-section-title">Intervals</div>
+                  <WorkoutView parsed={s.parsed_intervals} legacy={s.intervals} />
                 </div>
               {/if}
             {/if}
@@ -590,11 +586,17 @@
               {/each}
             {/if}
           </div>
-          {#if s.activity_id}
-            <button class="sd-activity-link" onclick={() => { showDayDetail = false; onNavigate?.('activity', s.activity_id!); }}>
-              View Activity →
+          <div class="sd-actions">
+            <button class="sd-action-btn" onclick={() => trainingApi.downloadFit(s.id, s.name || 'workout')}>
+              <Icon name="download" size={14} />
+              Export FIT
             </button>
-          {/if}
+            {#if s.activity_id}
+              <button class="sd-activity-link" onclick={() => { showDayDetail = false; onNavigate?.('activity', s.activity_id!); }}>
+                View Activity →
+              </button>
+            {/if}
+          </div>
         </div>
       {/each}
     </div>
@@ -963,8 +965,26 @@
     display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
   }
   .sd-block { font-weight: 500; }
+  .sd-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 0.5px solid var(--border);
+  }
+  .sd-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none; border: 0.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px; font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer; padding: 4px 10px;
+  }
+  .sd-action-btn:hover { background: var(--hover); color: var(--text); }
   .sd-activity-link {
-    margin-top: 8px;
     display: inline-block;
     background: none; border: none;
     font-size: 12px; font-weight: 600;

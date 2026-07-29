@@ -8,6 +8,7 @@
   import ErrorBanner from '$lib/components/ErrorBanner.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import TrainingPlanTimeline from '$lib/components/TrainingPlanTimeline.svelte';
+  import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
 
   let plans = $state<TrainingPlan[]>([]);
   let loading = $state(true);
@@ -334,6 +335,114 @@
   {:else if error}
     <ErrorBanner message={error} retry={load} />
   {:else if selectedPlan}
+    {#if showSessionForm}
+    <div class="session-form-page">
+      <div class="page-header">
+        <button class="back-btn" onclick={() => showSessionForm = false}>
+          <Icon name="chevronLeft" size={16} />
+          Back
+        </button>
+        <h1>{editingSession ? 'Edit Session' : 'Add Session'}</h1>
+      </div>
+      <div class="session-form-container">
+        <div class="form">
+          <div class="field-row">
+            <div class="field">
+              <label for="sess-date">Date</label>
+              <input id="sess-date" type="date" bind:value={sessDate} />
+            </div>
+            <div class="field">
+              <label for="sess-sport">Sport</label>
+              <select id="sess-sport" bind:value={sessSport}>
+                <option value="">-</option>
+                {#each sportOptions as sport}
+                  <option value={sport}>{sport}</option>
+                {/each}
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="sess-name">Name</label>
+            <input id="sess-name" type="text" bind:value={sessName} placeholder="e.g. Long Run, Recovery Ride" />
+          </div>
+          <div class="field">
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={sessRestDay} />
+              Rest day
+            </label>
+          </div>
+          {#if selectedPlan && selectedPlan.blocks.length > 0}
+            <div class="field">
+              <label for="sess-block">Block</label>
+              <select id="sess-block" bind:value={sessBlockId}>
+                <option value={null}>- None -</option>
+                {#each selectedPlan.blocks as b}
+                  <option value={b.id}>{b.name}</option>
+                {/each}
+              </select>
+            </div>
+          {/if}
+          {#if !sessRestDay}
+            <div class="field">
+              <label>Targets</label>
+              <div class="targets-list">
+                {#each sessTargets as target, i}
+                  <div class="target-row">
+                    <select bind:value={target.type} class="target-type-select">
+                      <option value="">-</option>
+                      {#each targetTypeOptions as t}
+                        <option value={t}>{t}</option>
+                      {/each}
+                    </select>
+                    {#if target.type && targetUnitMap[target.type]?.length > 0}
+                      <input type="number" bind:value={target.value} step="any" placeholder="Value" class="target-value-input" />
+                      <select bind:value={target.unit} class="target-unit-select">
+                        <option value="">-</option>
+                        {#each targetUnitMap[target.type] as u}
+                          <option value={u}>{u}</option>
+                        {/each}
+                      </select>
+                    {/if}
+                    <button class="icon-btn danger" onclick={() => { sessTargets = sessTargets.filter((_, idx) => idx !== i); }} title="Remove target">
+                      <Icon name="logout" size={14} />
+                    </button>
+                  </div>
+                {/each}
+              </div>
+              <button class="btn btn-outline btn-sm" onclick={() => { sessTargets = [...sessTargets, { type: '', value: null, unit: null }]; }}>
+                <Icon name="segments" size={14} />
+                Add Target
+              </button>
+            </div>
+            <div class="field">
+              <label>Intervals</label>
+              <WorkoutEditor bind:json={sessIntervals} />
+            </div>
+          {/if}
+          <div class="field">
+            <label for="sess-desc">Description</label>
+            <textarea id="sess-desc" bind:value={sessDescription} rows="2" placeholder="Optional notes..."></textarea>
+          </div>
+          <div class="field">
+            <label for="sess-notes">Notes</label>
+            <textarea id="sess-notes" bind:value={sessNotes} rows="2" placeholder="Additional notes..."></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-outline" onclick={() => showSessionForm = false}>Cancel</button>
+            {#if editingSession}
+              <button class="btn btn-outline" onclick={() => trainingApi.downloadFit(editingSession.id, sessName || 'workout')}>
+                <Icon name="download" size={14} />
+                Download FIT
+              </button>
+            {/if}
+            <button class="btn btn-primary" onclick={saveSession} disabled={savingSession || !sessDate}>
+              {savingSession ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+      </div>
+    {:else}
     <div class="plan-detail">
       <div class="plan-header">
         <button class="back-btn" onclick={backToList}>
@@ -458,6 +567,9 @@
                         <div class="session-notes">{s.notes}</div>
                       {/if}
                       <div class="session-actions">
+                        <button class="icon-btn" onclick={() => trainingApi.downloadFit(s.id, s.name || 'workout')} title="Download FIT">
+                          <Icon name="download" size={16} />
+                        </button>
                         <button class="icon-btn" onclick={() => openEditSession(s)} title="Edit">
                           <Icon name="segments" size={16} />
                         </button>
@@ -506,6 +618,9 @@
                         <div class="session-notes">{s.notes}</div>
                       {/if}
                       <div class="session-actions">
+                        <button class="icon-btn" onclick={() => trainingApi.downloadFit(s.id, s.name || 'workout')} title="Download FIT">
+                          <Icon name="download" size={16} />
+                        </button>
                         <button class="icon-btn" onclick={() => openEditSession(s)} title="Edit">
                           <Icon name="segments" size={16} />
                         </button>
@@ -521,7 +636,8 @@
           </div>
         {/if}
       </div>
-    </div>
+      </div>
+    {/if}
   {:else}
     <div class="page-header">
       <h1>Training Plans</h1>
@@ -604,98 +720,6 @@
   </div>
 </Modal>
 
-<Modal open={showSessionForm} title={editingSession ? 'Edit Session' : 'Add Session'} onClose={() => showSessionForm = false}>
-  <div class="form">
-    <div class="field-row">
-      <div class="field">
-        <label for="sess-date">Date</label>
-        <input id="sess-date" type="date" bind:value={sessDate} />
-      </div>
-      <div class="field">
-        <label for="sess-sport">Sport</label>
-        <select id="sess-sport" bind:value={sessSport}>
-          <option value="">-</option>
-          {#each sportOptions as sport}
-            <option value={sport}>{sport}</option>
-          {/each}
-        </select>
-      </div>
-    </div>
-    <div class="field">
-      <label for="sess-name">Name</label>
-      <input id="sess-name" type="text" bind:value={sessName} placeholder="e.g. Long Run, Recovery Ride" />
-    </div>
-    <div class="field">
-      <label class="checkbox-label">
-        <input type="checkbox" bind:checked={sessRestDay} />
-        Rest day
-      </label>
-    </div>
-    {#if selectedPlan && selectedPlan.blocks.length > 0}
-      <div class="field">
-        <label for="sess-block">Block</label>
-        <select id="sess-block" bind:value={sessBlockId}>
-          <option value={null}>- None -</option>
-          {#each selectedPlan.blocks as b}
-            <option value={b.id}>{b.name}</option>
-          {/each}
-        </select>
-      </div>
-    {/if}
-    {#if !sessRestDay}
-      <div class="field">
-        <label>Targets</label>
-        <div class="targets-list">
-          {#each sessTargets as target, i}
-            <div class="target-row">
-              <select bind:value={target.type} class="target-type-select">
-                <option value="">-</option>
-                {#each targetTypeOptions as t}
-                  <option value={t}>{t}</option>
-                {/each}
-              </select>
-              {#if target.type && targetUnitMap[target.type]?.length > 0}
-                <input type="number" bind:value={target.value} step="any" placeholder="Value" class="target-value-input" />
-                <select bind:value={target.unit} class="target-unit-select">
-                  <option value="">-</option>
-                  {#each targetUnitMap[target.type] as u}
-                    <option value={u}>{u}</option>
-                  {/each}
-                </select>
-              {/if}
-              <button class="icon-btn danger" onclick={() => { sessTargets = sessTargets.filter((_, idx) => idx !== i); }} title="Remove target">
-                <Icon name="logout" size={14} />
-              </button>
-            </div>
-          {/each}
-        </div>
-        <button class="btn btn-outline btn-sm" onclick={() => { sessTargets = [...sessTargets, { type: '', value: null, unit: null }]; }}>
-          <Icon name="segments" size={14} />
-          Add Target
-        </button>
-      </div>
-      <div class="field">
-        <label for="sess-intervals">Intervals (JSON)</label>
-        <textarea id="sess-intervals" bind:value={sessIntervals} rows="3" placeholder="e.g. warmup 10min, work 4x4min @250W"></textarea>
-      </div>
-    {/if}
-    <div class="field">
-      <label for="sess-desc">Description</label>
-      <textarea id="sess-desc" bind:value={sessDescription} rows="2" placeholder="Optional notes..."></textarea>
-    </div>
-    <div class="field">
-      <label for="sess-notes">Notes</label>
-      <textarea id="sess-notes" bind:value={sessNotes} rows="2" placeholder="Additional notes..."></textarea>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-outline" onclick={() => showSessionForm = false}>Cancel</button>
-      <button class="btn btn-primary" onclick={saveSession} disabled={savingSession || !sessDate}>
-        {savingSession ? 'Saving...' : 'Save'}
-      </button>
-    </div>
-  </div>
-</Modal>
-
 <Modal open={showDeleteSession} title="Delete Session" onClose={() => showDeleteSession = false}>
   <div class="delete-confirm">
     <p>Are you sure you want to delete this session?</p>
@@ -754,6 +778,7 @@
 <style>
   .page {
     max-width: 1200px;
+    margin: 0 auto;
   }
   .page-header {
     display: flex;
@@ -1125,11 +1150,32 @@
   .icon-btn:hover { background: var(--hover); color: var(--text); }
   .icon-btn.danger:hover { background: #fee2e2; color: #dc2626; }
 
+  .session-form-page {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .session-form-page .page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .session-form-page .page-header h1 {
+    font-size: var(--font-size-2xl, 22px);
+    font-weight: var(--font-weight-medium, 500);
+    margin: 0;
+  }
+  .session-form-container {
+    background: var(--card-bg, var(--surface));
+    border: var(--card-border, 0.5px solid var(--border));
+    border-radius: var(--card-radius, 10px);
+    padding: 24px;
+  }
+
   .form {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    min-width: 360px;
+    gap: 16px;
     font-family: var(--font-sans);
   }
   .field {

@@ -20,6 +20,7 @@ dependencies = [
     "python-dotenv>=1.0,<2",
     "gpxpy>=1.6,<2",
     "defusedxml>=0.7,<1",
+    "fit-tool>=0.5.0,<1",
     "fitparse>=1.2,<2",
     "httpx>=0.28,<1",
     "polyline>=2.0,<3",

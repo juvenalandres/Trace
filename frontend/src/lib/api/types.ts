@@ -410,6 +410,44 @@ export interface SessionTarget {
   unit: string | null;
 }
 
+export interface Duration {
+  value: number;
+  unit: string;
+}
+
+export interface Distance {
+  value: number;
+  unit: string;
+}
+
+export interface IntensityTarget {
+  type: string;
+  value: string | number | null;
+  unit: string | null;
+  of: string | null;
+  zone: number | null;
+}
+
+export interface WorkoutStep {
+  type: string;
+  name: string | null;
+  duration: Duration | null;
+  distance: Distance | null;
+  target: IntensityTarget | null;
+  repetitions: number | null;
+  steps: WorkoutStep[] | null;
+  notes: string | null;
+}
+
+export interface WorkoutBlock {
+  name: string | null;
+  steps: WorkoutStep[];
+}
+
+export interface Workout {
+  blocks: WorkoutBlock[];
+}
+
 export interface TrainingSession {
   id: number;
   plan_id: number;
@@ -419,6 +457,7 @@ export interface TrainingSession {
   description: string | null;
   targets: SessionTarget[];
   intervals: string | null;
+  parsed_intervals: Workout | null;
   notes: string | null;
   rest_day: boolean;
   activity_id: number | null;
@@ -491,6 +530,9 @@ export const trainingApi = {
   ctl: (days: number = 90) => api.get<CtlResponse>(`/training/ctl?days=${days}`),
 
   weeklyVolume: (planId: number, weeks: number = 24) => api.get<WeeklyVolumeResponse>(`/training/weekly-volume?plan_id=${planId}&weeks=${weeks}`),
+
+  downloadFit: (sessionId: number, name?: string) =>
+    api.download(`/training/sessions/${sessionId}/export.fit`, `${name || 'workout'}.fit`),
 };
 
 export interface WeeklyVolume {

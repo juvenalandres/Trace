@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { TrainingPlan, TrainingBlock, TrainingSession } from '$lib/api/types';
   import Modal from './Modal.svelte';
+  import WorkoutView from './WorkoutView.svelte';
 
   let { plan, onSessionClick }: { plan: TrainingPlan; onSessionClick?: (s: TrainingSession) => void } = $props();
 
@@ -285,11 +286,8 @@
                   <div class="session-desc">{s.description}</div>
                 {/if}
                 {#if !s.rest_day && s.intervals}
-                  {@const items = s.intervals.split(',').map(i => i.trim()).filter(Boolean)}
                   <div class="session-intervals">
-                    {#each items as item}
-                      <span class="session-interval">{item}</span>
-                    {/each}
+                    <WorkoutView parsed={s.parsed_intervals} legacy={s.intervals} />
                   </div>
                 {/if}
                 <div class="session-footer">
@@ -358,14 +356,9 @@
           </div>
 
           {#if s.intervals}
-            {@const items = s.intervals.split(',').map(i => i.trim()).filter(Boolean)}
             <div class="sdb-section">
-              <div class="sdb-section-title">Intervals ({items.length})</div>
-              <ul class="sdb-interval-list">
-                {#each items as item}
-                  <li class="sdb-interval-item">{item}</li>
-                {/each}
-              </ul>
+              <div class="sdb-section-title">Intervals</div>
+              <WorkoutView parsed={s.parsed_intervals} legacy={s.intervals} />
             </div>
           {/if}
         {/if}

@@ -84,6 +84,27 @@ export const api = {
   del: <T>(path: string) =>
     request<T>(path, { method: 'DELETE' }),
 
+  download: (path: string, filename: string = 'download.fit') => {
+    const token = getToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    fetch(`${BASE}${path}`, { headers, credentials: 'same-origin' })
+      .then(res => {
+        if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+        return res.blob();
+      })
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+  },
+
   upload: <T>(path: string, file: File, fields?: Record<string, string | number>) => {
     const formData = new FormData();
     formData.append('file', file);

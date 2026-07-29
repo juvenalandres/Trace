@@ -68,8 +68,10 @@ from trace_app.schemas.training import (
     TrainingSessionResponse,
     TrainingSessionUpdate,
 )
+from trace_app.schemas.workout import Workout
 from trace_app.services.activity_processor import process_activity
 from trace_app.services.eddington import get_unit_divisor, get_unit_label
+from trace_app.services.fit_encoder import encode_workout_fit
 from trace_app.services.fit_parser import FitResult, map_fit_sport, parse_fit
 from trace_app.services.gpx_parser import parse_gpx
 from trace_app.database import is_postgres
@@ -1745,6 +1747,53 @@ async def delete_session(
     await db.delete(session)
     await db.commit()
     return {"ok": True}
+
+
+@app.get("/api/training/sessions/{session_id}/export.fit")
+async def export_session_fit(
+    session_id: int,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    result = await db.execute(
+        select(TrainingSession)
+        .join(TrainingPlan, TrainingPlan.id == TrainingSession.plan_id)
+        .where(TrainingSession.id == session_id, TrainingPlan.user_id == user.id)
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    from trace_app.schemas.workout import parse_interval_json
+
+    workout_data = parse_interval_json(session.intervals)
+    steps: list[dict] = []
+    if workout_data:
+        for block in workout_data.get("blocks", []):
+            steps.extend(block.get("steps", []))
+
+    fit_bytes = encode_workout_fit(
+        steps=steps,
+        sport=session.sport_type or "other",
+        name=session.name or "",
+        scheduled_date=(
+            datetime.datetime.combine(session.scheduled_date, datetime.time.min)
+            if isinstance(session.scheduled_date, datetime.date)
+            else datetime.datetime.strptime(session.scheduled_date, "%Y-%m-%d")
+            if session.scheduled_date else None
+        ),
+    )
+
+    now_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_name = (session.name or f"session_{session.id}").replace(" ", "_")
+    filename = f"{safe_name}_{now_str}.fit"
+
+    from fastapi.responses import Response
+    return Response(
+        content=fit_bytes,
+        media_type="application/x-fit",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ── Training Blocks ───────────────────────────────────────────────
