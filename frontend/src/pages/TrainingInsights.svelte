@@ -487,6 +487,7 @@
   const zoneLabels = ['Z1 Recovery', 'Z2 Aerobic', 'Z3 Tempo', 'Z4 Threshold', 'Z5 VO2 Max'];
 
   let hoveredZone = $state<number | null>(null);
+  let hrZoneTooltip: HTMLDivElement;
 
   function polar(cx: number, cy: number, r: number, a: number): [number, number] {
     return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
@@ -536,8 +537,26 @@
       path.style.transition = 'opacity 0.15s';
       path.style.cursor = 'pointer';
 
-      path.addEventListener('mouseenter', () => { hoveredZone = i; });
-      path.addEventListener('mouseleave', () => { hoveredZone = null; });
+      path.addEventListener('mouseenter', (e) => {
+        hoveredZone = i;
+        const tt = hrZoneTooltip;
+        if (!tt) return;
+        const v = vals[i];
+        const pct = ((v / total) * 100).toFixed(1);
+        tt.innerHTML = `<div style="font-weight:600;color:${zoneColors[i]}">${zoneLabels[i]}</div><div>${(v / 3600).toFixed(1)}h (${pct}%)</div>`;
+        const rect = hrZoneContainer.getBoundingClientRect();
+        let left = (e as MouseEvent).clientX + 12;
+        let top = (e as MouseEvent).clientY - 10;
+        if (left + tt.offsetWidth > window.innerWidth) left = (e as MouseEvent).clientX - tt.offsetWidth - 12;
+        if (top + tt.offsetHeight > window.innerHeight) top = window.innerHeight - tt.offsetHeight - 8;
+        tt.style.left = `${left}px`;
+        tt.style.top = `${top}px`;
+        tt.style.display = 'block';
+      });
+      path.addEventListener('mouseleave', () => {
+        hoveredZone = null;
+        if (hrZoneTooltip) hrZoneTooltip.style.display = 'none';
+      });
       svg.appendChild(path);
 
       startAngle = endAngle + gap;
@@ -903,14 +922,10 @@
                 <span class="legend-item"><span class="legend-dot" style="background: {color}"></span>{zoneLabels[i]}</span>
               {/each}
             </div>
-            {#if hoveredZone !== null}
-              {@const v = [hrZoneData.z1, hrZoneData.z2, hrZoneData.z3, hrZoneData.z4, hrZoneData.z5][hoveredZone]}
-              {@const pct = ((v / total) * 100).toFixed(1)}
-              <span class="hr-zone-hover-label" style="color: {zoneColors[hoveredZone]}">{zoneLabels[hoveredZone]} — {(v / 3600).toFixed(1)}h ({pct}%)</span>
-            {/if}
           </div>
           <div class="hr-zone-donut-wrap">
             <div bind:this={hrZoneContainer} class="hr-zone-donut"></div>
+            <div bind:this={hrZoneTooltip} class="chart-tooltip" style="display:none;"></div>
           </div>
         </div>
       </div>
@@ -1124,12 +1139,7 @@
     justify-content: center;
     align-items: center;
   }
-  .hr-zone-hover-label {
-    font-size: var(--font-size-sm, 12px);
-    font-weight: var(--font-weight-medium, 500);
-    transition: opacity 0.15s;
-  }
-  .acwr-zones {
+  .hr-zone-donut-wrap {
     display: flex;
     gap: 6px;
   }
