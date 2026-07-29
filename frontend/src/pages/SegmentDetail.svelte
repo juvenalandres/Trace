@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount } from 'svelte';
   import { segmentApi, routeApi } from '$lib/api/types';
   import type { Segment, SegmentEffort, SegmentPR, SegmentLeaderboardEntry } from '$lib/api/types';
@@ -306,7 +306,7 @@
         <h1>{segment.name}</h1>
       </div>
       <div class="meta">
-        {#if segment.creator_name}by {segment.creator_name} · {/if}
+        {#if segment.creator_name}by {segment.creator_name} Â· {/if}
         {#if segment.sport_type}
           <span class="sport-badge" style="background: {sportColor(segment.sport_type)}20; color: {sportColor(segment.sport_type)}">
             {segment.sport_type}
@@ -503,7 +503,7 @@
 
 <style>
   .segment-detail {
-    max-width: 960px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 24px;
     font-family: var(--font-sans);

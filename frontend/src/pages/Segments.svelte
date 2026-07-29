@@ -156,7 +156,7 @@
 
 <style>
   .page {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 24px;
     font-family: var(--font-sans);
@@ -234,37 +234,55 @@
     border-collapse: collapse;
     font-size: var(--font-size-base, 13px);
   }
+  .segments-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
   .segments-table th {
     text-align: left;
-    padding: 12px 16px;
-    font-weight: var(--font-weight-medium, 500);
+    padding: 10px 16px;
+    font-weight: var(--font-weight-semibold, 600);
     font-size: var(--font-size-xs, 11px);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
     color: var(--text-secondary);
     background: var(--bg);
-    border-bottom: 0.5px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    user-select: none;
+  }
+  .segments-table th:last-child,
+  .segments-table td:last-child {
+    text-align: right;
   }
   .segments-table td {
-    padding: 12px 16px;
+    padding: 14px 16px;
     border-bottom: 0.5px solid var(--border);
+    vertical-align: middle;
+  }
+  .segments-table tbody tr:last-child td {
+    border-bottom: none;
   }
   .segment-row {
     cursor: pointer;
+    transition: background .12s ease;
   }
-  .segment-row:hover {
+  .segment-row:hover td {
     background: var(--hover);
   }
   .segment-name {
     font-weight: var(--font-weight-medium, 500);
   }
   .sport-badge {
-    display: inline-flex;
-    padding: 2px 8px;
-    border-radius: 4px;
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
     font-size: var(--font-size-xs, 11px);
     text-transform: capitalize;
-    font-weight: var(--font-weight-medium, 500);
+    font-weight: var(--font-weight-semibold, 600);
+    letter-spacing: 0.02em;
+    line-height: 1.3;
   }
   @media (max-width: 768px) {
     .page { padding: 16px; }

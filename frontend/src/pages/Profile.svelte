@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount } from 'svelte';
   import { userApi, zonesApi } from '$lib/api/types';
   import type { User, UserZone } from '$lib/api/types';
@@ -244,20 +244,20 @@
           </div>
           <div class="zone-row">
             <span class="zone-label">Z1</span>
-            <span class="zone-placeholder">—</span>
-            <input class="zone-input" type="number" bind:value={hrValues[1]} placeholder="—" />
+            <span class="zone-placeholder">â€”</span>
+            <input class="zone-input" type="number" bind:value={hrValues[1]} placeholder="â€”" />
           </div>
           {#each [1, 2, 3] as i}
             <div class="zone-row">
               <span class="zone-label">Z{i + 1}</span>
-              <input class="zone-input" type="number" bind:value={hrValues[i * 2]} placeholder="—" />
-              <input class="zone-input" type="number" bind:value={hrValues[i * 2 + 1]} placeholder="—" />
+              <input class="zone-input" type="number" bind:value={hrValues[i * 2]} placeholder="â€”" />
+              <input class="zone-input" type="number" bind:value={hrValues[i * 2 + 1]} placeholder="â€”" />
             </div>
           {/each}
           <div class="zone-row">
             <span class="zone-label">Z5</span>
-            <input class="zone-input" type="number" bind:value={hrValues[8]} placeholder="—" />
-            <span class="zone-placeholder">—</span>
+            <input class="zone-input" type="number" bind:value={hrValues[8]} placeholder="â€”" />
+            <span class="zone-placeholder">â€”</span>
           </div>
         </div>
         <div class="zone-actions">
@@ -288,20 +288,20 @@
           </div>
           <div class="zone-row">
             <span class="zone-label">Z1</span>
-            <span class="zone-placeholder">—</span>
-            <input class="zone-input" type="number" bind:value={powerValues[1]} placeholder="—" />
+            <span class="zone-placeholder">â€”</span>
+            <input class="zone-input" type="number" bind:value={powerValues[1]} placeholder="â€”" />
           </div>
           {#each [1, 2, 3] as i}
             <div class="zone-row">
               <span class="zone-label">Z{i + 1}</span>
-              <input class="zone-input" type="number" bind:value={powerValues[i * 2]} placeholder="—" />
-              <input class="zone-input" type="number" bind:value={powerValues[i * 2 + 1]} placeholder="—" />
+              <input class="zone-input" type="number" bind:value={powerValues[i * 2]} placeholder="â€”" />
+              <input class="zone-input" type="number" bind:value={powerValues[i * 2 + 1]} placeholder="â€”" />
             </div>
           {/each}
           <div class="zone-row">
             <span class="zone-label">Z5</span>
-            <input class="zone-input" type="number" bind:value={powerValues[8]} placeholder="—" />
-            <span class="zone-placeholder">—</span>
+            <input class="zone-input" type="number" bind:value={powerValues[8]} placeholder="â€”" />
+            <span class="zone-placeholder">â€”</span>
           </div>
         </div>
         <div class="zone-actions">
@@ -331,7 +331,7 @@
     <div class="card">
       <div class="card-header">
         <Icon name="activity" size={20} />
-        <span>Admin — Users</span>
+        <span>Admin â€” Users</span>
       </div>
       <div class="card-body">
         {#if usersLoading}
@@ -343,7 +343,7 @@
             {#each users as u}
               <div class="user-row">
                 <span class="user-email">{u.email}</span>
-                <span class="user-name">{u.name || '—'}</span>
+                <span class="user-name">{u.name || 'â€”'}</span>
                 <span class="user-badge" class:admin={u.is_admin}>
                   {u.is_admin ? 'Admin' : 'User'}
                 </span>
@@ -378,7 +378,7 @@
 
 <style>
   .page {
-    max-width: 700px;
+    max-width: 1200px;
   }
   h1 {
     font-size: 28px;

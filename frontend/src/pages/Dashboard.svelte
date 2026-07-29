@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount } from 'svelte';
   import Icon from '$lib/components/Icon.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -74,7 +74,7 @@
     const now = new Date();
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    return `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()} · ${now.getFullYear()}`;
+    return `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()} Â· ${now.getFullYear()}`;
   }
 
   function getUserName(): string {
@@ -224,7 +224,7 @@
           <div class="metric-value">{formatKm(currentStats.distance_m)} <span class="metric-unit">km</span></div>
           {#if distanceTrend}
             <div class="metric-trend" class:positive={distanceTrend.positive} class:negative={!distanceTrend.positive}>
-              <span class="trend-arrow">{distanceTrend.positive ? '↑' : '↓'}</span>
+              <span class="trend-arrow">{distanceTrend.positive ? 'â†‘' : 'â†“'}</span>
               {distanceTrend.absolute ? `${formatKm(distanceTrend.value)} km` : `${distanceTrend.value}%`} vs {getPrevPeriodLabel(selectedPeriod)}
             </div>
           {:else}
@@ -245,7 +245,7 @@
           <div class="metric-value">{formatDuration(currentStats.duration_s)}</div>
           {#if durationTrend}
             <div class="metric-trend" class:positive={durationTrend.positive} class:negative={!durationTrend.positive}>
-              <span class="trend-arrow">{durationTrend.positive ? '↑' : '↓'}</span>
+              <span class="trend-arrow">{durationTrend.positive ? 'â†‘' : 'â†“'}</span>
               {durationTrend.absolute ? formatDurationShort(durationTrend.value) : `${durationTrend.value}%`} vs {getPrevPeriodLabel(selectedPeriod)}
             </div>
           {:else}
@@ -266,7 +266,7 @@
           <div class="metric-value">{Math.round(currentStats.elevation_gain)} <span class="metric-unit">m</span></div>
           {#if elevationTrend}
             <div class="metric-trend" class:positive={elevationTrend.positive} class:negative={!elevationTrend.positive}>
-              <span class="trend-arrow">{elevationTrend.positive ? '↑' : '↓'}</span>
+              <span class="trend-arrow">{elevationTrend.positive ? 'â†‘' : 'â†“'}</span>
               {elevationTrend.absolute ? `${elevationTrend.value} m` : `${elevationTrend.value}%`} vs {getPrevPeriodLabel(selectedPeriod)}
             </div>
           {:else}
@@ -287,7 +287,7 @@
           <div class="metric-value">{currentStats.activity_count}</div>
           <div class="metric-trend muted">
             {#if dashboard.by_sport.length > 0}
-              {dashboard.by_sport.map(s => `${s.activity_count} ${s.sport_type}${s.activity_count > 1 ? 's' : ''}`).join(' · ')}
+              {dashboard.by_sport.map(s => `${s.activity_count} ${s.sport_type}${s.activity_count > 1 ? 's' : ''}`).join(' Â· ')}
             {:else}
               -
             {/if}
@@ -333,7 +333,7 @@
       <div class="dash-card full-width">
         <div class="card-header">
           <h3>Recent activities</h3>
-          <button class="view-all-link" onclick={() => onNavigate?.('activities')}>View all →</button>
+          <button class="view-all-link" onclick={() => onNavigate?.('activities')}>View all â†’</button>
         </div>
         <div class="activities-table">
           <div class="table-header">
@@ -370,7 +370,7 @@
 
 <style>
   .dashboard {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 24px;
     font-family: var(--font-sans);

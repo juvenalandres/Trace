@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount } from 'svelte';
   import { activitiesApi, gearApi } from '$lib/api/types';
   import type { Activity, Gear } from '$lib/api/types';
@@ -22,7 +22,7 @@
       const all = await gearApi.list();
       gearList = all.filter(g => !g.retired);
     } catch {
-      // silently ignore — gear is optional
+      // silently ignore â€” gear is optional
     }
   });
 
@@ -87,7 +87,7 @@
       <div class="spinner"></div>
       <p>Uploading...</p>
     {:else}
-      <div class="icon">📁</div>
+      <div class="icon">ðŸ“</div>
       <p>Drag & drop a GPX or FIT file here, or click to select</p>
       <span class="hint">Supports .gpx and .fit files from any device</span>
     {/if}
@@ -122,7 +122,7 @@
 
 <style>
   .upload-page {
-    max-width: 600px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 24px;
   }

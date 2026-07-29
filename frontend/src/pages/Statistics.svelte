@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount } from 'svelte';
   import uPlot from 'uplot';
   import 'uplot/dist/uPlot.min.css';
@@ -180,7 +180,7 @@
               if (val != null) {
                 const d = new Date(months[idx] * 1000);
                 const dateStr = d.toLocaleString('en', { month: 'short', year: 'numeric' });
-                tooltipEl.innerHTML = `${dateStr} · <strong>${val.toFixed(1)} km</strong>`;
+                tooltipEl.innerHTML = `${dateStr} Â· <strong>${val.toFixed(1)} km</strong>`;
                 tooltipEl.style.display = 'block';
                 let finalLeft = mouseX + 12;
                 let finalTop = mouseY - 36;
@@ -293,7 +293,7 @@
         <div bind:this={chartContainer} class="chart" role="presentation" onmousemove={handleChartMouseMove} onmouseleave={handleChartMouseLeave}></div>
         <div bind:this={tooltipEl} class="chart-tooltip" style="display: none;"></div>
         <div class="chart-footer">
-          <span class="footer-label">Time: —</span>
+          <span class="footer-label">Time: â€”</span>
           <span class="footer-legend">
             <span class="legend-swatch" style="background: #378ADD"></span>
             Distance (km)
@@ -319,7 +319,7 @@
               <div class="sport-bar-track">
                 <div class="sport-bar-fill" style="width: {pct}%; background: {sportColors[sport.sport_type] ?? sportColors.other}"></div>
               </div>
-              <span class="sport-stats">{formatKm(sport.distance_m)} km · {formatDurationShort(sport.duration_s)}</span>
+              <span class="sport-stats">{formatKm(sport.distance_m)} km Â· {formatDurationShort(sport.duration_s)}</span>
             </div>
           {/each}
         </div>
@@ -351,7 +351,7 @@
 
 <style>
   .page {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 24px;
     font-family: var(--font-sans);
