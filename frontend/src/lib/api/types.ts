@@ -533,6 +533,9 @@ export const trainingApi = {
 
   downloadFit: (sessionId: number, name?: string) =>
     api.download(`/training/sessions/${sessionId}/export.fit`, `${name || 'workout'}.fit`),
+
+  downloadPlanZip: (planId: number, name?: string) =>
+    api.download(`/training/plans/${planId}/export.zip`, `${name || 'training_plan'}_workouts.zip`),
 };
 
 export interface WeeklyVolume {

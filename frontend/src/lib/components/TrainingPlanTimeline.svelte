@@ -2,6 +2,7 @@
   import type { TrainingPlan, TrainingBlock, TrainingSession } from '$lib/api/types';
   import Modal from './Modal.svelte';
   import WorkoutView from './WorkoutView.svelte';
+  import WorkoutPreviewChart from './WorkoutPreviewChart.svelte';
 
   let { plan, onSessionClick }: { plan: TrainingPlan; onSessionClick?: (s: TrainingSession) => void } = $props();
 
@@ -341,44 +342,55 @@
       </div>
 
       <div class="sd-body">
-        {#if !s.rest_day}
-          <div class="sdb-section">
-            <div class="sdb-section-title">Targets</div>
-            {#if s.targets && s.targets.length > 0}
-              <div class="sdb-pills">
-                {#each s.targets as t}
-                  <span class="sdb-pill target-{t.type}">{t.type}{t.value ? ` ${t.value}` : ''}{t.unit ? ` ${t.unit}` : ''}</span>
-                {/each}
-              </div>
-            {:else}
-              <span class="sdb-empty">Free session</span>
-            {/if}
+        {#if s.rest_day}
+          <div class="sd-rest-card">
+            <div class="sd-rest-icon">&#9788;</div>
+            <div class="sd-rest-text">Rest day — no workout scheduled</div>
           </div>
-
-          {#if s.intervals}
-            <div class="sdb-section">
-              <div class="sdb-section-title">Intervals</div>
+        {:else}
+          {#if s.intervals && s.parsed_intervals}
+            <div class="sd-chart">
+              <WorkoutPreviewChart workout={s.parsed_intervals} height={120} />
+            </div>
+            <div class="sd-steps">
               <WorkoutView parsed={s.parsed_intervals} legacy={s.intervals} />
             </div>
+          {:else if s.targets && s.targets.length > 0}
+            <div class="sd-targets-card">
+              <div class="sd-section-label">Targets</div>
+              <div class="sd-pills">
+                {#each s.targets as t}
+                  <span class="sd-pill target-{t.type}">{t.type}{t.value ? ` ${t.value}` : ''}{t.unit ? ` ${t.unit}` : ''}</span>
+                {/each}
+              </div>
+            </div>
+          {:else}
+            <div class="sd-free-card">
+              <div class="sd-section-label">Free session</div>
+              <p class="sd-free-text">No targets or intervals set.</p>
+            </div>
           {/if}
-        {/if}
 
-        {#if s.description}
-          <div class="sdb-section">
-            <div class="sdb-section-title">Description</div>
-            <p class="sdb-text">{s.description}</p>
-          </div>
-        {/if}
+          {#if s.description}
+            <div class="sd-section">
+              <div class="sd-section-label">Description</div>
+              <p class="sd-text">{s.description}</p>
+            </div>
+          {/if}
 
-        {#if s.notes}
-          <div class="sdb-section">
-            <div class="sdb-section-title">Notes</div>
-            <p class="sdb-text">{s.notes}</p>
-          </div>
+          {#if s.notes}
+            <div class="sd-section">
+              <div class="sd-section-label">Notes</div>
+              <p class="sd-text">{s.notes}</p>
+            </div>
+          {/if}
         {/if}
       </div>
 
       <div class="sd-footer">
+        <button class="btn btn-outline" onclick={() => { selectedSession = null; }}>
+          Close
+        </button>
         <button class="btn btn-primary" onclick={() => { const sess = selectedSession; selectedSession = null; onSessionClick?.(sess!); }}>
           Edit Session
         </button>
@@ -471,21 +483,24 @@
     font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;
   }
 
-  .sessions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sessions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
   .session-card {
     background: var(--bg); border: 0.5px solid var(--border);
-    border-radius: 8px; padding: 10px 12px; cursor: pointer;
+    border-radius: 10px; padding: 12px 14px; cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
   }
-  .session-card.rest-day { border-style: dashed; opacity: .7; }
+  .session-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .session-card.rest-day { border-style: dashed; opacity: .65; }
   .session-eyebrow {
     font-size: 10px; font-weight: 600; color: var(--text-secondary);
-    letter-spacing: .04em; text-transform: uppercase; margin-bottom: 3px;
+    letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px;
   }
-  .session-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
-  .session-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.5; margin-top: 3px; }
-  .session-intervals { display: flex; flex-direction: column; gap: 1px; margin-top: 3px; }
-  .session-interval { font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
-  .session-interval::before { content: '•'; margin-right: 4px; color: var(--text-tertiary, #9ca3af); }
+  .session-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .session-desc {
+    font-size: 11px; color: var(--text-secondary); line-height: 1.5; margin-top: 4px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .session-intervals { margin-top: 6px; }
 
   .target-pills { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
   .target-pill {
@@ -523,17 +538,18 @@
   }
 
   .sd {
-    min-width: 380px; max-width: 520px; font-family: var(--font-sans);
+    min-width: 420px; max-width: 560px; font-family: var(--font-sans);
   }
 
   .sd-header {
     display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
-    margin-bottom: 14px; padding-bottom: 14px;
+    margin-bottom: 16px; padding-bottom: 16px;
     border-bottom: 0.5px solid var(--border);
   }
   .sd-header-left { display: flex; flex-direction: column; gap: 4px; }
   .sd-date {
-    font-size: 12px; font-weight: 500; color: var(--text-secondary);
+    font-size: 11px; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: .04em;
   }
   .sd-name {
     font-size: 20px; font-weight: 700; color: var(--text);
@@ -550,31 +566,61 @@
 
   .sd-body { display: flex; flex-direction: column; gap: 10px; }
 
-  .sdb-section {
+  .sd-chart {
     border: 0.5px solid var(--border);
-    border-radius: 8px; padding: 10px 12px;
+    border-radius: 10px; padding: 8px 10px 4px;
     background: var(--bg);
   }
-  .sdb-section-title {
-    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--text-secondary); margin-bottom: 6px;
+  .sd-steps {
+    border: 0.5px solid var(--border);
+    border-radius: 10px; padding: 10px 12px;
+    background: var(--bg);
   }
-  .sdb-text {
+
+  .sd-section {
+    border: 0.5px solid var(--border);
+    border-radius: 10px; padding: 10px 12px;
+    background: var(--bg);
+  }
+  .sd-targets-card {
+    border: 0.5px solid var(--border);
+    border-radius: 10px; padding: 10px 12px;
+    background: var(--bg);
+  }
+  .sd-section-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-secondary); margin-bottom: 6px;
+  }
+  .sd-text {
     font-size: 13px; color: var(--text); line-height: 1.5; margin: 0; white-space: pre-wrap;
   }
-  .sdb-interval-list {
-    list-style: none; margin: 0; padding: 0;
-    display: flex; flex-direction: column; gap: 4px;
-  }
-  .sdb-interval-item {
-    font-size: 13px; color: var(--text); line-height: 1.5;
-  }
-  .sdb-interval-item::before { content: '•'; margin-right: 6px; color: var(--text-secondary); }
-  .sdb-pills { display: flex; flex-wrap: wrap; gap: 4px; }
-  .sdb-pill {
+  .sd-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+  .sd-pill {
     font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 6px;
   }
-  .sdb-empty { font-size: 12px; color: var(--text-secondary); font-style: italic; }
+  .sd-free-card {
+    border: 0.5px dashed var(--border);
+    border-radius: 10px; padding: 16px;
+    background: var(--bg);
+    text-align: center;
+  }
+  .sd-free-text {
+    font-size: 12px; color: var(--text-secondary);
+    margin: 0; font-style: italic;
+  }
+
+  .sd-rest-card {
+    border: 0.5px dashed var(--border);
+    border-radius: 10px; padding: 20px;
+    background: var(--bg);
+    text-align: center;
+  }
+  .sd-rest-icon {
+    font-size: 28px; margin-bottom: 6px; opacity: .4;
+  }
+  .sd-rest-text {
+    font-size: 13px; color: var(--text-secondary);
+  }
 
   .sd-footer {
     display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; padding-top: 14px;
@@ -589,6 +635,11 @@
   }
   .btn-primary { background: var(--primary); color: white; }
   .btn-primary:hover { opacity: 0.9; }
+  .btn-outline {
+    background: var(--surface); color: var(--text);
+    border: 0.5px solid var(--border);
+  }
+  .btn-outline:hover { background: var(--hover); }
 
   @media (max-width: 540px) {
     .sessions-grid { grid-template-columns: 1fr; }

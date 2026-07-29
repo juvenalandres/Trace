@@ -1749,21 +1749,7 @@ async def delete_session(
     return {"ok": True}
 
 
-@app.get("/api/training/sessions/{session_id}/export.fit")
-async def export_session_fit(
-    session_id: int,
-    user: User = Depends(get_current_user),
-    db=Depends(get_db),
-):
-    result = await db.execute(
-        select(TrainingSession)
-        .join(TrainingPlan, TrainingPlan.id == TrainingSession.plan_id)
-        .where(TrainingSession.id == session_id, TrainingPlan.user_id == user.id)
-    )
-    session = result.scalar_one_or_none()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
+def _session_fit_bytes(session) -> tuple[bytes, str]:
     from trace_app.schemas.workout import parse_interval_json
 
     workout_data = parse_interval_json(session.intervals)
@@ -1783,16 +1769,71 @@ async def export_session_fit(
             if session.scheduled_date else None
         ),
     )
+    safe_name = (session.name or f"session_{session.id}").replace(" ", "_").replace("/", "-")
+    filename = f"{safe_name}.fit"
+    return fit_bytes, filename
 
-    now_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    safe_name = (session.name or f"session_{session.id}").replace(" ", "_")
-    filename = f"{safe_name}_{now_str}.fit"
+
+@app.get("/api/training/sessions/{session_id}/export.fit")
+async def export_session_fit(
+    session_id: int,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    result = await db.execute(
+        select(TrainingSession)
+        .join(TrainingPlan, TrainingPlan.id == TrainingSession.plan_id)
+        .where(TrainingSession.id == session_id, TrainingPlan.user_id == user.id)
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    fit_bytes, filename = _session_fit_bytes(session)
 
     from fastapi.responses import Response
     return Response(
         content=fit_bytes,
         media_type="application/x-fit",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/api/training/plans/{plan_id}/export.zip")
+async def export_plan_zip(
+    plan_id: int,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    plan = await db.get(TrainingPlan, plan_id)
+    if not plan or plan.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    result = await db.execute(
+        select(TrainingSession)
+        .where(TrainingSession.plan_id == plan_id)
+        .order_by(TrainingSession.scheduled_date)
+    )
+    sessions = result.scalars().all()
+
+    import io, zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for s in sessions:
+            if not s.rest_day:
+                try:
+                    data, fname = _session_fit_bytes(s)
+                    zf.writestr(fname, data)
+                except Exception:
+                    pass
+    zip_bytes = buf.getvalue()
+
+    safe_name = (plan.name or "training_plan").replace(" ", "_").replace("/", "-")
+    from fastapi.responses import Response
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}_workouts.zip"'},
     )
 
 

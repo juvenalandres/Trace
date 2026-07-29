@@ -450,6 +450,10 @@
           Back
         </button>
         <div class="plan-actions">
+          <button class="btn btn-outline" onclick={() => trainingApi.downloadPlanZip(selectedPlan.id, selectedPlan.name)}>
+            <Icon name="download" size={16} />
+            Export Plan
+          </button>
           <button class="btn btn-outline" onclick={() => openEditPlan(selectedPlan)}>
             <Icon name="segments" size={16} />
             Edit Plan
