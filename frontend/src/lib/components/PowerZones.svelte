@@ -23,7 +23,7 @@
   ];
 
   const activeZones = zones ?? defaultZones;
-  const zoneColors = ['#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8'];
+  const zoneColors = ['#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a'];
 
   let zoneData = $state<{ label: string; percent: number; color: string }[]>([]);
 

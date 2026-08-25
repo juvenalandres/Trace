@@ -43,6 +43,11 @@
     zone_4_max: number;
     zone_5_min: number;
     zone_5_max: number;
+    zone_6_min: number | null;
+    zone_6_max: number | null;
+    zone_7_min: number | null;
+    zone_7_max: number | null;
+    num_zones: number;
     valid_from: string | null;
   }
 
@@ -53,13 +58,28 @@
     { value: 'max_hr', label: 'Max Heart Rate', unit: 'bpm', icon: 'heart' },
   ];
 
-  const HR_ZONE_PERCENTAGES = [
-    { zone: 1, min: 0.50, max: 0.60, label: 'Z1 Recovery' },
-    { zone: 2, min: 0.60, max: 0.70, label: 'Z2 Aerobic' },
-    { zone: 3, min: 0.70, max: 0.80, label: 'Z3 Tempo' },
-    { zone: 4, min: 0.80, max: 0.90, label: 'Z4 Threshold' },
-    { zone: 5, min: 0.90, max: 1.00, label: 'Z5 VO2 Max' },
+  const HR_ZONE_PERCENTAGES_5 = [
+    { zone: 1, min: 0.00, max: 0.81, label: 'Z1 Recovery' },
+    { zone: 2, min: 0.81, max: 0.90, label: 'Z2 Aerobic Endurance' },
+    { zone: 3, min: 0.90, max: 0.94, label: 'Z3 Tempo' },
+    { zone: 4, min: 0.94, max: 1.00, label: 'Z4 Threshold' },
+    { zone: 5, min: 1.00, max: 1.15, label: 'Z5 VO2 Max' },
   ];
+
+  const HR_ZONE_PERCENTAGES_7 = [
+    { zone: 1, min: 0.00, max: 0.81, label: 'Z1 Recovery' },
+    { zone: 2, min: 0.81, max: 0.90, label: 'Z2 Aerobic Endurance' },
+    { zone: 3, min: 0.90, max: 0.94, label: 'Z3 Tempo' },
+    { zone: 4, min: 0.94, max: 1.00, label: 'Z4 Threshold' },
+    { zone: 5, min: 1.00, max: 1.03, label: 'Z5 VO2 Max' },
+    { zone: 6, min: 1.03, max: 1.07, label: 'Z6 Anaerobic Capacity' },
+    { zone: 7, min: 1.07, max: 1.20, label: 'Z7 Neuromuscular' },
+  ];
+
+  function getZonePercentages(): typeof HR_ZONE_PERCENTAGES_5 {
+    const numZones = existingZones?.num_zones ?? 5;
+    return numZones === 7 ? HR_ZONE_PERCENTAGES_7 : HR_ZONE_PERCENTAGES_5;
+  }
 
   let tests = $state<FitnessTest[]>([]);
   let loading = $state(true);
@@ -75,6 +95,12 @@
   let parsing = $state(false);
   let updateZones = $state(false);
   let existingZones = $state<UserZone | null>(null);
+
+  function hasValidCurrentZones(): boolean {
+    if (!existingZones) return false;
+    const z = existingZones as unknown as Record<string, number | null>;
+    return [1,2,3,4,5].some(i => (z[`zone_${i}_min`] ?? 0) > 0 || (z[`zone_${i}_max`] ?? 0) > 0);
+  }
 
   let chartContainer = $state<HTMLDivElement>();
   let chart: uPlot | null = null;
@@ -104,11 +130,12 @@
 
   let computedZones = $derived.by(() => {
     if (testType !== 'lthr' || computedValue === null) return null;
-    return HR_ZONE_PERCENTAGES.map(z => ({
+    const percentages = getZonePercentages();
+    return percentages.map(z => ({
       zone: z.zone,
       label: z.label,
-      currentMin: existingZones ? existingZones[`zone_${z.zone}_min` as keyof UserZone] as number : null,
-      currentMax: existingZones ? existingZones[`zone_${z.zone}_max` as keyof UserZone] as number : null,
+      currentMin: existingZones ? (existingZones as unknown as Record<string, number>)[`zone_${z.zone}_min`] ?? null : null,
+      currentMax: existingZones ? (existingZones as unknown as Record<string, number>)[`zone_${z.zone}_max`] ?? null : null,
       newMin: Math.round(computedValue! * z.min),
       newMax: Math.round(computedValue! * z.max),
     }));
@@ -423,13 +450,19 @@
       });
 
       if (updateZones && testType === 'lthr' && computedValue) {
-        const zones: Record<string, number> = {};
-        for (const z of HR_ZONE_PERCENTAGES) {
+        const numZones = existingZones?.num_zones ?? 5;
+        const percentages = getZonePercentages();
+        const zones: Record<string, number> = { num_zones: numZones };
+        for (const z of percentages) {
           zones[`zone_${z.zone}_min`] = Math.round(computedValue * z.min);
           zones[`zone_${z.zone}_max`] = Math.round(computedValue * z.max);
         }
         try {
-          await api.post('/zones', { zone_type: 'hr', ...zones });
+          if (existingZones) {
+            await api.put(`/zones/${existingZones.id}`, { zone_type: 'hr', ...zones });
+          } else {
+            await api.post('/zones', { zone_type: 'hr', ...zones });
+          }
         } catch {
           // zone update is best-effort
         }
@@ -551,16 +584,21 @@
                   <line x1="12" y1="8" x2="12.01" y2="8"/>
                 </svg>
                 <span class="info-tip-content">
-                  Zones are calculated as % of LTHR:<br>
-                  Z1: 50–60% (Recovery)<br>
-                  Z2: 60–70% (Aerobic)<br>
-                  Z3: 70–80% (Tempo)<br>
-                  Z4: 80–90% (Threshold)<br>
-                  Z5: 90–100% (VO2 Max)
+                  Zones calculated using Friel model (% of LTHR):<br>
+                  Z1: &lt;81% (Recovery)<br>
+                  Z2: 81–89% (Aerobic Endurance)<br>
+                  Z3: 90–93% (Tempo)<br>
+                  Z4: 94–99% (Threshold)<br>
+                  Z5: &gt;100% (VO2 Max)
+                  {#if existingZones?.num_zones === 7}
+                    <br>Z5: 100–102% (VO2 Max)<br>
+                    Z6: 103–106% (Anaerobic Capacity)<br>
+                    Z7: &gt;106% (Neuromuscular)
+                  {/if}
                 </span>
               </span>
             </h3>
-            {#if existingZones}
+            {#if hasValidCurrentZones()}
               <p class="zone-subtitle">Compare current zones with new values based on LTHR of {computedValue} bpm</p>
             {:else}
               <p class="zone-subtitle">New HR zones based on LTHR of {computedValue} bpm</p>
@@ -570,24 +608,28 @@
                 <thead>
                   <tr>
                     <th>Zone</th>
-                    <th>Current</th>
-                    <th>New</th>
-                    <th>Difference</th>
+                    {#if hasValidCurrentZones()}
+                      <th>Current</th>
+                    {/if}
+                    <th>Range</th>
+                    {#if hasValidCurrentZones()}
+                      <th>Difference</th>
+                    {/if}
                   </tr>
                 </thead>
                 <tbody>
                   {#each computedZones as z}
                     <tr>
                       <td>{z.label}</td>
-                      <td>{existingZones ? `${z.currentMin}–${z.currentMax} bpm` : '--'}</td>
+                      {#if hasValidCurrentZones()}
+                        <td>{z.currentMin}–{z.currentMax} bpm</td>
+                      {/if}
                       <td class="new-zone">{z.newMin}–{z.newMax} bpm</td>
-                      <td class={existingZones && (z.currentMin !== z.newMin || z.currentMax !== z.newMax) ? 'zone-changed' : 'zone-unchanged'}>
-                        {#if existingZones}
+                      {#if hasValidCurrentZones()}
+                        <td class={z.currentMin !== z.newMin || z.currentMax !== z.newMax ? 'zone-changed' : 'zone-unchanged'}>
                           {z.newMin - (z.currentMin ?? 0) > 0 ? '+' : ''}{z.newMin - (z.currentMin ?? 0)} / {z.newMax - (z.currentMax ?? 0) > 0 ? '+' : ''}{z.newMax - (z.currentMax ?? 0)} bpm
-                        {:else}
-                          new
-                        {/if}
-                      </td>
+                        </td>
+                      {/if}
                     </tr>
                   {/each}
                 </tbody>

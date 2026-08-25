@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, func
+from sqlalchemy import DateTime, Float, Integer, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from trace_app.database import Base
@@ -22,6 +22,11 @@ class UserZone(Base):
     zone_4_max: Mapped[float | None] = mapped_column(Float, default=None)
     zone_5_min: Mapped[float | None] = mapped_column(Float, default=None)
     zone_5_max: Mapped[float | None] = mapped_column(Float, default=None)
+    zone_6_min: Mapped[float | None] = mapped_column(Float, default=None)
+    zone_6_max: Mapped[float | None] = mapped_column(Float, default=None)
+    zone_7_min: Mapped[float | None] = mapped_column(Float, default=None)
+    zone_7_max: Mapped[float | None] = mapped_column(Float, default=None)
+    num_zones: Mapped[int] = mapped_column(Integer, default=5)
     valid_from: Mapped[datetime.date | None] = mapped_column(default=None)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

@@ -15,6 +15,7 @@ export interface User {
   max_hr: number | null;
   resting_hr: number | null;
   is_admin: boolean;
+  created_at: string;
 }
 
 export interface ActivityStats {
@@ -237,6 +238,11 @@ export interface UserZone {
   zone_4_max: number | null;
   zone_5_min: number | null;
   zone_5_max: number | null;
+  zone_6_min: number | null;
+  zone_6_max: number | null;
+  zone_7_min: number | null;
+  zone_7_max: number | null;
+  num_zones: number;
 }
 
 export const authApi = {
@@ -331,10 +337,43 @@ export const userApi = {
 export const zonesApi = {
   list: () => api.get<UserZone[]>('/zones'),
 
-  create: (data: { zone_type: string; zone_1_min?: number; zone_1_max?: number; zone_2_min?: number; zone_2_max?: number; zone_3_min?: number; zone_3_max?: number; zone_4_min?: number; zone_4_max?: number; zone_5_min?: number; zone_5_max?: number }) =>
+  create: (data: {
+    zone_type: string;
+    zone_1_min?: number;
+    zone_1_max?: number;
+    zone_2_min?: number;
+    zone_2_max?: number;
+    zone_3_min?: number;
+    zone_3_max?: number;
+    zone_4_min?: number;
+    zone_4_max?: number;
+    zone_5_min?: number;
+    zone_5_max?: number;
+    zone_6_min?: number;
+    zone_6_max?: number;
+    zone_7_min?: number;
+    zone_7_max?: number;
+    num_zones?: number;
+  }) =>
     api.post<UserZone>('/zones', data),
 
-  update: (id: number, data: Partial<{ zone_1_min: number; zone_1_max: number; zone_2_min: number; zone_2_max: number; zone_3_min: number; zone_3_max: number; zone_4_min: number; zone_4_max: number; zone_5_min: number; zone_5_max: number }>) =>
+  update: (id: number, data: Partial<{
+    zone_1_min: number;
+    zone_1_max: number;
+    zone_2_min: number;
+    zone_2_max: number;
+    zone_3_min: number;
+    zone_3_max: number;
+    zone_4_min: number;
+    zone_4_max: number;
+    zone_5_min: number;
+    zone_5_max: number;
+    zone_6_min: number;
+    zone_6_max: number;
+    zone_7_min: number;
+    zone_7_max: number;
+    num_zones: number;
+  }>) =>
     api.put<UserZone>(`/zones/${id}`, data),
 
   delete: (id: number) => api.del(`/zones/${id}`),

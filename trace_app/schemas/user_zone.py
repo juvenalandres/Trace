@@ -15,6 +15,11 @@ class UserZoneCreate(BaseModel):
     zone_4_max: float | None = None
     zone_5_min: float | None = None
     zone_5_max: float | None = None
+    zone_6_min: float | None = None
+    zone_6_max: float | None = None
+    zone_7_min: float | None = None
+    zone_7_max: float | None = None
+    num_zones: int = 5
     valid_from: datetime.date | None = None
 
 
@@ -29,6 +34,11 @@ class UserZoneUpdate(BaseModel):
     zone_4_max: float | None = None
     zone_5_min: float | None = None
     zone_5_max: float | None = None
+    zone_6_min: float | None = None
+    zone_6_max: float | None = None
+    zone_7_min: float | None = None
+    zone_7_max: float | None = None
+    num_zones: int | None = None
 
 
 class UserZoneResponse(BaseModel):
@@ -47,5 +57,10 @@ class UserZoneResponse(BaseModel):
     zone_4_max: float | None = None
     zone_5_min: float | None = None
     zone_5_max: float | None = None
+    zone_6_min: float | None = None
+    zone_6_max: float | None = None
+    zone_7_min: float | None = None
+    zone_7_max: float | None = None
+    num_zones: int
     valid_from: datetime.date | None = None
     created_at: datetime.datetime

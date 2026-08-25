@@ -45,8 +45,9 @@
 
   function zoneToRanges(zone: UserZone | null): { min: number; max: number }[] | undefined {
     if (!zone) return undefined;
+    const numZones = zone.num_zones ?? 5;
     const ranges: { min: number; max: number }[] = [];
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= numZones; i++) {
       const min = zone[`zone_${i}_min` as keyof UserZone] as number | null;
       const max = zone[`zone_${i}_max` as keyof UserZone] as number | null;
       if (min != null && max != null) {

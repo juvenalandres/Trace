@@ -322,6 +322,11 @@ async def create_zone(
         zone_4_max=data.zone_4_max,
         zone_5_min=data.zone_5_min,
         zone_5_max=data.zone_5_max,
+        zone_6_min=data.zone_6_min,
+        zone_6_max=data.zone_6_max,
+        zone_7_min=data.zone_7_min,
+        zone_7_max=data.zone_7_max,
+        num_zones=data.num_zones,
         valid_from=data.valid_from,
     )
     db.add(zone)
@@ -357,7 +362,8 @@ async def update_zone(
     for field in [
         "zone_1_min", "zone_1_max", "zone_2_min", "zone_2_max",
         "zone_3_min", "zone_3_max", "zone_4_min", "zone_4_max",
-        "zone_5_min", "zone_5_max",
+        "zone_5_min", "zone_5_max", "zone_6_min", "zone_6_max",
+        "zone_7_min", "zone_7_max", "num_zones",
     ]:
         val = getattr(data, field)
         if val is not None:
