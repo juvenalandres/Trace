@@ -305,8 +305,8 @@
     gap: 16px;
   }
   .toggle-btn {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--bg);

@@ -227,7 +227,7 @@
     background: var(--card-bg, var(--surface));
     border: var(--card-border, 0.5px solid var(--border));
     border-radius: var(--card-radius, 10px);
-    overflow: hidden;
+    overflow-x: auto;
   }
   .segments-table {
     width: 100%;

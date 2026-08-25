@@ -831,7 +831,7 @@
     gap: 6px;
   }
   .pill {
-    padding: 4px 12px;
+    padding: 8px 14px;
     border-radius: 16px;
     border: 0.5px solid var(--border);
     background: var(--surface);
@@ -850,7 +850,7 @@
     background: var(--card-bg, var(--surface));
     border: var(--card-border, 0.5px solid var(--border));
     border-radius: var(--card-radius, 10px);
-    overflow: hidden;
+    overflow-x: auto;
   }
   .data-table {
     width: 100%;

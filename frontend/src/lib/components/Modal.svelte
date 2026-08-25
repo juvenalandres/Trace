@@ -51,8 +51,9 @@
     background: var(--card-bg, var(--surface));
     border: var(--card-border, 0.5px solid var(--border));
     border-radius: var(--card-radius, 10px);
-    min-width: 400px;
+    min-width: auto;
     max-width: 90vw;
+    width: min(400px, 90vw);
     max-height: 90vh;
     overflow: auto;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -71,8 +72,11 @@
     font-family: var(--font-sans);
   }
   .close-btn {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: none;
     background: none;
     font-size: 24px;

@@ -904,7 +904,7 @@
     min-width: 320px;
   }
 
-  .sd { min-width: 380px; max-width: 520px; font-family: var(--font-sans); }
+  .sd { min-width: 0; max-width: 520px; width: 100%; font-family: var(--font-sans); }
 
   .sd-header {
     display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;

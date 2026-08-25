@@ -160,4 +160,12 @@
     font-size: 13px;
     margin: 8px 0;
   }
+  @media (max-width: 420px) {
+    .login-card {
+      width: 100%;
+      max-width: 360px;
+      padding: 24px 20px;
+      margin: 0 16px;
+    }
+  }
 </style>
