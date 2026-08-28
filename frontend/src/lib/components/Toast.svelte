@@ -21,9 +21,9 @@
   }
 
   function colorFor(type: string): { bg: string; border: string; text: string; iconBg: string; iconColor: string } {
-    if (type === 'success') return { bg: '#f0fdf4', border: '#bbf7d0', text: '#166534', iconBg: '#dcfce7', iconColor: '#16a34a' };
-    if (type === 'error') return { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', iconBg: '#fee2e2', iconColor: '#dc2626' };
-    return { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af', iconBg: '#dbeafe', iconColor: '#2563eb' };
+    if (type === 'success') return { bg: 'var(--success-bg)', border: 'var(--success-border)', text: 'var(--success-text)', iconBg: 'var(--success-bg)', iconColor: 'var(--success)' };
+    if (type === 'error') return { bg: 'var(--danger-bg)', border: 'var(--danger-border)', text: 'var(--danger-text)', iconBg: 'var(--danger-bg)', iconColor: 'var(--danger)' };
+    return { bg: 'var(--info-bg)', border: 'var(--info-border)', text: 'var(--info-text)', iconBg: 'var(--primary-light)', iconColor: 'var(--primary)' };
   }
 </script>
 
@@ -66,7 +66,7 @@
     border-radius: 10px;
     font-size: 14px;
     font-weight: 500;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-lg);
     pointer-events: auto;
     animation: slideIn 0.2s ease-out;
     max-width: 380px;

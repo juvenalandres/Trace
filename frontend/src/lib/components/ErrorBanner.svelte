@@ -28,10 +28,10 @@
     align-items: center;
     gap: 12px;
     padding: 14px 16px;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
     border-radius: 10px;
-    color: #991b1b;
+    color: var(--danger);
   }
   .error-icon {
     flex-shrink: 0;
@@ -40,9 +40,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #fee2e2;
+    background: var(--danger-bg);
     border-radius: 50%;
-    color: #dc2626;
+    color: var(--danger);
   }
   .error-text {
     flex: 1;
@@ -54,10 +54,10 @@
     align-items: center;
     gap: 4px;
     padding: 6px 12px;
-    border: 1px solid #fecaca;
+    border: 1px solid var(--danger-border);
     border-radius: 6px;
-    background: white;
-    color: #dc2626;
+    background: var(--surface);
+    color: var(--danger);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -65,6 +65,6 @@
     transition: background 0.15s;
   }
   .retry-btn:hover {
-    background: #fee2e2;
+    background: var(--danger-bg);
   }
 </style>

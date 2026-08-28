@@ -50,20 +50,20 @@
   .modal {
     background: var(--card-bg, var(--surface));
     border: var(--card-border, 0.5px solid var(--border));
-    border-radius: var(--card-radius, 10px);
+    border-radius: var(--radius-lg);
     min-width: auto;
     max-width: 90vw;
     width: min(400px, 90vw);
     max-height: 90vh;
     overflow: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-lg);
   }
   .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
-    border-bottom: 0.5px solid var(--border);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border);
   }
   h2 {
     margin: 0;
@@ -82,14 +82,14 @@
     font-size: 24px;
     cursor: pointer;
     color: var(--text-secondary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     font-family: var(--font-sans);
   }
   .close-btn:hover {
     background: var(--hover);
   }
   .body {
-    padding: 20px;
+    padding: var(--space-5);
     font-family: var(--font-sans);
   }
 </style>

@@ -194,13 +194,13 @@
       if (routeLine) routeLine.remove();
       if (map && routeCoords.length > 1) {
         routeLine = L.polyline(routeCoords, {
-          color: '#3b82f6',
-          weight: 4,
-          opacity: 0.8,
-        }).addTo(map);
-      }
+        color: 'var(--primary)',
+        weight: 4,
+        opacity: 0.8,
+      }).addTo(map);
+    }
 
-      await fetchElevation();
+    await fetchElevation();
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to plan route';
     } finally {
@@ -262,19 +262,19 @@
         points: {
           size: 4,
           fill: '#3b82f6',
-          stroke: '#fff',
+          stroke: '#ffffff',
           width: 1.5,
         },
       },
       axes: [
         {
-          stroke: '#888',
+          stroke: '#94a3b8',
           grid: { show: false },
           values: (_u, ticks) => ticks.map(t => `${t.toFixed(1)} km`),
         },
         {
-          stroke: '#888',
-          grid: { stroke: '#eee' },
+          stroke: '#94a3b8',
+          grid: { stroke: '#e2e8f0' },
           values: (_u, ticks) => ticks.map(t => `${Math.round(t)} m`),
         },
       ],
@@ -282,7 +282,7 @@
         {},
         {
           stroke: '#3b82f6',
-          fill: '#3b82f620',
+          fill: 'rgba(59,130,246,0.12)',
           width: 1.5,
           points: { show: false },
           spline: 0.3,
@@ -466,7 +466,7 @@ ${trkpts}
     if (routeLine) routeLine.remove();
     if (map && routeCoords.length > 1) {
       routeLine = L.polyline(routeCoords, {
-        color: '#3b82f6',
+        color: 'var(--primary)',
         weight: 4,
         opacity: 0.8,
       }).addTo(map);
@@ -690,7 +690,7 @@ ${trkpts}
     gap: 8px;
     font-size: 13px;
     color: var(--text-secondary);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-sm);
     z-index: 1000;
   }
   .route-bar {
@@ -718,10 +718,10 @@ ${trkpts}
     color: var(--text-secondary);
   }
   .elev-up {
-    color: #22c55e;
+    color: var(--success);
   }
   .elev-down {
-    color: #ef4444;
+    color: var(--danger);
   }
   .route-actions {
     margin-left: auto;
@@ -757,7 +757,7 @@ ${trkpts}
     font-size: 12px;
     color: var(--text);
     pointer-events: none;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-sm);
     z-index: 10;
   }
   .btn {
@@ -766,24 +766,25 @@ ${trkpts}
     gap: 6px;
     padding: 8px 16px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
+    transition: background var(--transition-fast);
   }
   .btn-sm {
     padding: 6px 12px;
     font-size: 13px;
   }
   .btn-primary {
-    background: #3b82f6;
+    background: var(--primary);
     color: white;
   }
   .btn-primary:hover {
-    background: #2563eb;
+    background: var(--primary-hover);
   }
   .btn-primary:disabled {
-    background: #94a3b8;
+    background: var(--text-tertiary);
     cursor: not-allowed;
   }
   .btn-outline {
@@ -825,7 +826,7 @@ ${trkpts}
   }
   .modal-content input:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--primary);
   }
   .modal-actions {
     display: flex;
@@ -918,19 +919,19 @@ ${trkpts}
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #3b82f6;
+    background: var(--primary);
     border: 2px solid white;
     box-shadow: 0 1px 4px rgba(0,0,0,0.3);
   }
   :global(.waypoint-dot.start) {
     width: 16px;
     height: 16px;
-    background: #22c55e;
+    background: var(--success);
   }
   :global(.waypoint-dot.end) {
     width: 16px;
     height: 16px;
-    background: #ef4444;
+    background: var(--danger);
   }
   :global(.cursor-marker) {
     background: none !important;
@@ -940,8 +941,8 @@ ${trkpts}
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #3b82f6;
+    background: var(--primary);
     border: 2px solid white;
-    box-shadow: 0 0 6px 2px rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 6px 2px color-mix(in srgb, var(--primary) 50%, transparent);
   }
 </style>

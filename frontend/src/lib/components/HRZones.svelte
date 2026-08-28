@@ -23,7 +23,7 @@
   ];
 
   const activeZones = zones ?? defaultZones;
-  const zoneColors = ['#F09595', '#E24B4A', '#A32D2D', '#791F1F', '#501313', '#3A0A0A', '#250505'];
+  const zoneColors = ['var(--zone-hr-1)', 'var(--zone-hr-2)', 'var(--zone-hr-3)', 'var(--zone-hr-4)', 'var(--zone-hr-5)', 'var(--zone-hr-6)', 'var(--zone-hr-7)'];
 
   let zoneData = $state<{ label: string; percent: number; color: string; range: string }[]>([]);
 
@@ -142,8 +142,8 @@
     align-items: center;
     justify-content: center;
     border-radius: 6px;
-    background: #FBEAF0;
-    color: #993556;
+    background: var(--danger-bg);
+    color: var(--danger);
   }
 
   .hr-label {

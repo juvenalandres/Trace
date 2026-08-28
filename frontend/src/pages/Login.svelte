@@ -116,11 +116,12 @@
     width: 100%;
     padding: 10px 12px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     font-size: 14px;
     background: var(--bg);
     color: var(--text);
     box-sizing: border-box;
+    transition: border-color var(--transition-fast);
   }
   input:focus {
     outline: none;
@@ -132,11 +133,12 @@
     background: var(--primary);
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     margin-top: 8px;
+    transition: opacity var(--transition-fast);
   }
   .submit-btn:hover {
     opacity: 0.9;
@@ -156,7 +158,7 @@
     margin-top: 12px;
   }
   .error {
-    color: #ef4444;
+    color: var(--danger);
     font-size: 13px;
     margin: 8px 0;
   }

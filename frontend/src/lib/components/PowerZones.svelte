@@ -23,7 +23,7 @@
   ];
 
   const activeZones = zones ?? defaultZones;
-  const zoneColors = ['#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a'];
+  const zoneColors = ['var(--zone-power-1)', 'var(--zone-power-2)', 'var(--zone-power-3)', 'var(--zone-power-4)', 'var(--zone-power-5)', 'var(--zone-power-6)', 'var(--zone-power-7)'];
 
   let zoneData = $state<{ label: string; percent: number; color: string }[]>([]);
 
@@ -126,8 +126,8 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: color-mix(in srgb, #3b82f6 12%, transparent);
-    color: #3b82f6;
+    background: var(--primary-bg);
+    color: var(--primary);
   }
   .pwr-label {
     font-size: 16px;

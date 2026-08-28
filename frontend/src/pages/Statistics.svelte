@@ -31,12 +31,12 @@
   let availableYears = $state<number[]>([]);
 
   const sportColors: Record<string, string> = {
-    ride: '#378ADD',
-    run: '#1D9E75',
-    swim: '#06b6d4',
-    hike: '#f59e0b',
-    walk: '#f59e0b',
-    other: '#64748b',
+    ride: 'var(--sport-ride)',
+    run: 'var(--sport-run)',
+    swim: 'var(--sport-swim)',
+    hike: 'var(--sport-hike)',
+    walk: 'var(--sport-walk)',
+    other: 'var(--sport-other)',
   };
 
   const sportIcons: Record<string, string> = {
@@ -71,12 +71,12 @@
   }
 
   const prConfig: Record<string, { label: string; icon: string; color: string; bg: string; unit: string; format: (v: number) => string }> = {
-    longest_distance: { label: 'Longest distance', icon: 'distance', color: '#3b82f6', bg: '#3b82f620', unit: 'km', format: (v) => formatKm(v) },
-    longest_duration: { label: 'Longest duration', icon: 'duration', color: '#14b8a6', bg: '#14b8a620', unit: '', format: (v) => formatDuration(v) },
-    highest_elevation: { label: 'Highest elevation', icon: 'elevationUp', color: '#f59e0b', bg: '#f59e0b20', unit: 'm', format: (v) => `${Math.round(v)}` },
-    fastest_speed: { label: 'Fastest avg speed', icon: 'speed', color: '#f97316', bg: '#f9731620', unit: 'km/h', format: formatSpeed },
-    max_speed: { label: 'Top speed', icon: 'bolt', color: '#8b5cf6', bg: '#8b5cf620', unit: 'km/h', format: formatSpeed },
-    highest_hr: { label: 'Highest avg HR', icon: 'heart', color: '#ec4899', bg: '#ec489920', unit: 'bpm', format: (v) => `${Math.round(v)}` },
+    longest_distance: { label: 'Longest distance', icon: 'distance', color: 'var(--primary)', bg: 'var(--primary-bg)', unit: 'km', format: (v) => formatKm(v) },
+    longest_duration: { label: 'Longest duration', icon: 'duration', color: 'var(--success)', bg: 'var(--success-bg)', unit: '', format: (v) => formatDuration(v) },
+    highest_elevation: { label: 'Highest elevation', icon: 'elevationUp', color: 'var(--warning)', bg: 'var(--warning-bg)', unit: 'm', format: (v) => `${Math.round(v)}` },
+    fastest_speed: { label: 'Fastest avg speed', icon: 'speed', color: 'var(--chart-2)', bg: 'color-mix(in srgb, var(--chart-2) 12%, transparent)', unit: 'km/h', format: formatSpeed },
+    max_speed: { label: 'Top speed', icon: 'bolt', color: 'var(--chart-3)', bg: 'color-mix(in srgb, var(--chart-3) 12%, transparent)', unit: 'km/h', format: formatSpeed },
+    highest_hr: { label: 'Highest avg HR', icon: 'heart', color: 'var(--chart-4)', bg: 'color-mix(in srgb, var(--chart-4) 12%, transparent)', unit: 'bpm', format: (v) => `${Math.round(v)}` },
   };
 
   function backfillMonths(monthly: VolumeResponse['monthly']) {
@@ -138,8 +138,8 @@
         },
         points: {
           size: 4,
-          fill: '#378ADD',
-          stroke: '#fff',
+          fill: '#3b82f6',
+          stroke: '#ffffff',
           width: 1.5,
         },
       },
@@ -164,10 +164,10 @@
       series: [
         {},
         {
-          stroke: '#378ADD',
-          fill: '#E6F1FB',
+          stroke: '#3b82f6',
+          fill: 'rgba(59,130,246,0.2)',
           width: 1.5,
-          points: { size: 5, fill: '#378ADD', stroke: '#fff', width: 1.5 },
+          points: { size: 5, fill: '#3b82f6', stroke: '#ffffff', width: 1.5 },
         },
       ],
       legend: { show: false },
@@ -295,7 +295,7 @@
         <div class="chart-footer">
           <span class="footer-label">Time: —</span>
           <span class="footer-legend">
-            <span class="legend-swatch" style="background: #378ADD"></span>
+            <span class="legend-swatch" style="background: var(--primary)"></span>
             Distance (km)
           </span>
         </div>
@@ -388,15 +388,15 @@
     color: var(--text);
   }
   .year-btn.active {
-    border: 1.5px solid #378ADD;
-    color: #185FA5;
+    border: 1.5px solid var(--primary);
+    color: var(--primary);
     font-weight: var(--font-weight-medium, 500);
     background: transparent;
   }
   .chart-subtitle {
     font-size: 12px;
     font-weight: 400;
-    color: #185FA5;
+    color: var(--primary);
     margin-top: 2px;
   }
   .chart {
@@ -553,7 +553,7 @@
   .record-source {
     font-size: 12px;
     font-weight: 400;
-    color: #185FA5;
+    color: var(--primary);
     margin-top: 4px;
   }
   @media (max-width: 768px) {

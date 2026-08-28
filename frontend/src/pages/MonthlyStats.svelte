@@ -29,12 +29,12 @@
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   const sportColors: Record<string, string> = {
-    ride: '#378ADD',
-    run: '#1D9E75',
-    swim: '#06b6d4',
-    hike: '#f59e0b',
-    walk: '#f59e0b',
-    other: '#64748b',
+    ride: 'var(--sport-ride)',
+    run: 'var(--sport-run)',
+    swim: 'var(--sport-swim)',
+    hike: 'var(--sport-hike)',
+    walk: 'var(--sport-walk)',
+    other: 'var(--sport-other)',
   };
 
   function formatKm(m: number): string {
@@ -240,28 +240,28 @@
     <!-- Metric Cards -->
     <div class="metric-grid">
       <div class="metric-card">
-        <div class="metric-icon" style="background: #3b82f620; color: #3b82f6">
+        <div class="metric-icon" style="--accent: var(--primary)">
           <Icon name="distance" size={18} />
         </div>
         <div class="metric-label">Distance</div>
         <div class="metric-value">{formatKm(monthDist)} <span class="metric-unit">km</span></div>
       </div>
       <div class="metric-card">
-        <div class="metric-icon" style="background: #14b8a620; color: #14b8a6">
+        <div class="metric-icon" style="--accent: var(--success)">
           <Icon name="duration" size={18} />
         </div>
         <div class="metric-label">Duration</div>
         <div class="metric-value">{formatDurationColon(monthDur)} <span class="metric-unit">h</span></div>
       </div>
       <div class="metric-card">
-        <div class="metric-icon" style="background: #f59e0b20; color: #f59e0b">
+        <div class="metric-icon" style="--accent: var(--warning)">
           <Icon name="elevation" size={18} />
         </div>
         <div class="metric-label">Elevation</div>
         <div class="metric-value">{Math.round(monthElev)} <span class="metric-unit">m</span></div>
       </div>
       <div class="metric-card">
-        <div class="metric-icon" style="background: #f9731620; color: #f97316">
+        <div class="metric-icon" style="--accent: var(--chart-2)">
           <Icon name="activity" size={18} />
         </div>
         <div class="metric-label">Activities</div>
@@ -412,6 +412,8 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 10px;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
   }
   .metric-label {
     font-size: 11px;
@@ -539,12 +541,12 @@
     border-radius: 50%;
   }
   .day-num.active {
-    color: #185FA5;
+    color: var(--primary);
     font-weight: 500;
   }
   .day-num.today {
-    background: #378ADD;
-    color: #E6F1FB;
+    background: var(--primary);
+    color: var(--primary-light);
     font-weight: 500;
   }
   .activity-badges {
@@ -632,8 +634,8 @@
     background: var(--hover);
   }
   .picker-month.selected {
-    background: #378ADD;
-    color: #fff;
+    background: var(--primary);
+    color: var(--primary-light);
     font-weight: 500;
   }
   .picker-today {

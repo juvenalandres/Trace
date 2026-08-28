@@ -23,8 +23,8 @@
       width: container.clientWidth,
       height: 200,
       axes: [
-        { stroke: '#888', grid: { stroke: '#eee' } },
-        { stroke: '#888', grid: { stroke: '#eee' } },
+        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
+        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
       ],
       series: [
         {},

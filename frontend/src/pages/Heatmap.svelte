@@ -23,12 +23,12 @@
   let availableYears = $state<number[]>([]);
 
   const sportColors: Record<string, string> = {
-    run: '#22c55e',
-    ride: '#3b82f6',
-    walk: '#f59e0b',
-    hike: '#f97316',
-    swim: '#06b6d4',
-    other: '#8b5cf6',
+    run: 'var(--sport-run)',
+    ride: 'var(--sport-ride)',
+    walk: 'var(--sport-walk)',
+    hike: 'var(--sport-hike)',
+    swim: 'var(--sport-swim)',
+    other: 'var(--sport-other)',
   };
 
   function decodePolyline(str: string): [number, number][] {

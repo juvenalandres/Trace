@@ -51,14 +51,14 @@
       },
       axes: [
         {
-          stroke: '#888',
-          grid: { stroke: '#eee' },
+          stroke: '#94a3b8',
+          grid: { stroke: '#e2e8f0' },
           label: `Distance (${data.unit_label})`,
           labelSize: 12,
         },
         {
-          stroke: '#888',
-          grid: { stroke: '#eee' },
+          stroke: '#94a3b8',
+          grid: { stroke: '#e2e8f0' },
           label: 'Activities',
           labelSize: 12,
         },
@@ -67,7 +67,7 @@
         {},
         {
           stroke: '#3b82f6',
-          fill: '#3b82f620',
+          fill: 'rgba(59,130,246,0.12)',
           width: 1.5,
           paths: uPlot.paths.bars({ size: [0.8, 100] }),
           points: { show: false },

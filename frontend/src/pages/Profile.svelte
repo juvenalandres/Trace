@@ -190,8 +190,8 @@
   }
 
   // Zone bar helpers
-  const HR_ZONE_COLORS = ['#F09595', '#E24B4A', '#A32D2D', '#791F1F', '#501313', '#3A0A0A', '#250505'];
-  const POWER_ZONE_COLORS = ['#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a'];
+  const HR_ZONE_COLORS = ['var(--zone-hr-1)', 'var(--zone-hr-2)', 'var(--zone-hr-3)', 'var(--zone-hr-4)', 'var(--zone-hr-5)', 'var(--zone-hr-6)', 'var(--zone-hr-7)'];
+  const POWER_ZONE_COLORS = ['var(--zone-power-1)', 'var(--zone-power-2)', 'var(--zone-power-3)', 'var(--zone-power-4)', 'var(--zone-power-5)', 'var(--zone-power-6)', 'var(--zone-power-7)'];
 
   function getZoneRanges(values: number[], numZones: number): { min: number; max: number }[] {
     const ranges: { min: number; max: number }[] = [];
@@ -451,7 +451,7 @@
     <div class="card-body">
       <div class="benchmarks-grid">
         <div class="benchmark-card">
-          <div class="benchmark-icon" style="background: #dbeafe; color: #2563eb;">
+          <div class="benchmark-icon" style="background: var(--primary-light); color: var(--primary);">
             <Icon name="chart" size={16} />
           </div>
           <div class="benchmark-info">
@@ -470,7 +470,7 @@
         </div>
 
         <div class="benchmark-card">
-          <div class="benchmark-icon" style="background: #fce7f3; color: #db2777;">
+          <div class="benchmark-icon" style="background: var(--danger-bg); color: var(--danger);">
             <Icon name="insights" size={16} />
           </div>
           <div class="benchmark-info">
@@ -487,7 +487,7 @@
         </div>
 
         <div class="benchmark-card">
-          <div class="benchmark-icon" style="background: #fce7f3; color: #db2777;">
+          <div class="benchmark-icon" style="background: var(--danger-bg); color: var(--danger);">
             <Icon name="heart" size={16} />
           </div>
           <div class="benchmark-info">
@@ -506,7 +506,7 @@
         </div>
 
         <div class="benchmark-card">
-          <div class="benchmark-icon" style="background: #fee2e2; color: #dc2626;">
+          <div class="benchmark-icon" style="background: var(--danger-bg); color: var(--danger);">
             <Icon name="heart" size={16} />
           </div>
           <div class="benchmark-info">
@@ -522,7 +522,7 @@
         </div>
 
         <div class="benchmark-card">
-          <div class="benchmark-icon" style="background: #f3e8ff; color: #7c3aed;">
+          <div class="benchmark-icon" style="background: var(--bg-subtle); color: #8b5cf6;">
             <Icon name="activity" size={16} />
           </div>
           <div class="benchmark-info">
@@ -730,7 +730,7 @@
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: var(--primary, #3b82f6);
+    background: var(--primary);
     color: #fff;
     display: flex;
     align-items: center;
@@ -891,15 +891,15 @@
     cursor: not-allowed;
   }
   .btn-danger {
-    background: #fee2e2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid var(--danger-border);
   }
   .btn-danger:hover {
-    background: #fecaca;
+    background: color-mix(in srgb, var(--danger) 15%, transparent);
   }
   .danger-zone {
-    border-color: #fecaca;
+    border-color: var(--danger-border);
   }
   .zones-grid {
     display: flex;
@@ -964,7 +964,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #f59e0b;
+    background: var(--warning);
     flex-shrink: 0;
     animation: pulse 1.5s ease-in-out infinite;
   }
@@ -988,7 +988,7 @@
     transition: all 0.15s;
   }
   .toggle-btn.active {
-    background: var(--accent, #3b82f6);
+    background: var(--primary);
     color: #fff;
   }
   .users-list {
@@ -1023,10 +1023,10 @@
     background: var(--border-light);
     color: var(--text-secondary);
   }
-  .user-badge.admin {
-    background: #dbeafe;
-    color: #1d4ed8;
-  }
+.user-badge.admin {
+  background: var(--primary-light);
+  color: var(--primary);
+}
   .btn-sm {
     padding: 6px 12px;
     font-size: 12px;

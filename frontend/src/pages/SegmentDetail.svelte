@@ -84,7 +84,7 @@
 
   function sportColor(sport: string | null): string {
     const colors: Record<string, string> = {
-      run: '#22c55e', ride: '#3b82f6', swim: '#06b6d4', hike: '#f59e0b', walk: '#a855f7', other: '#64748b'
+      run: 'var(--sport-run)', ride: 'var(--sport-ride)', swim: 'var(--sport-swim)', hike: 'var(--sport-hike)', walk: 'var(--sport-walk)', other: 'var(--sport-other)'
     };
     return colors[sport ?? 'other'];
   }
@@ -623,7 +623,7 @@
     border: 0.5px solid var(--border);
     border-radius: 10px;
   }
-  .elevation-error { color: #dc2626; }
+  .elevation-error { color: var(--danger); }
   .pr-card {
     background: color-mix(in srgb, var(--primary) 8%, transparent);
     border: 0.5px solid var(--border);
@@ -713,11 +713,11 @@
   }
   .btn-outline:hover { background: var(--hover); }
   .btn-danger {
-    background: #fee2e2;
-    color: #dc2626;
-    border: 0.5px solid #fecaca;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid var(--danger-border);
   }
-  .btn-danger:hover { background: #fecaca; }
+  .btn-danger:hover { background: color-mix(in srgb, var(--danger) 15%, transparent); }
   .btn-sm { padding: 6px 10px; font-size: var(--font-size-xs, 11px); }
   .btn-icon {
     background: none;
@@ -728,8 +728,8 @@
     cursor: pointer;
   }
   .btn-icon:hover { background: var(--hover); }
-  .btn-danger-icon { color: #dc2626; }
-  .btn-danger-icon:hover { background: #fee2e2; }
+  .btn-danger-icon { color: var(--danger); }
+  .btn-danger-icon:hover { background: var(--danger-bg); }
   .edit-form {
     display: flex;
     flex-direction: column;
@@ -772,7 +772,7 @@
     color: var(--text);
   }
   .delete-confirm .warning {
-    color: #dc2626;
+    color: var(--danger);
     margin-bottom: 16px;
   }
   @media (max-width: 768px) {

@@ -303,8 +303,8 @@
       width: chartContainer.clientWidth,
       height: 300,
       axes: [
-        { stroke: '#888', grid: { stroke: '#eee' }, values: (_u: uPlot, vals: number[]) => vals.map(v => formatChartTime(v)) },
-        { stroke: '#888', grid: { stroke: '#eee' }, side: 1, values: (_u: uPlot, vals: number[]) => vals.map(v => `${Math.round(v)} W`) },
+        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' }, values: (_u: uPlot, vals: number[]) => vals.map(v => formatChartTime(v)) },
+        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' }, side: 1, values: (_u: uPlot, vals: number[]) => vals.map(v => `${Math.round(v)} W`) },
         { stroke: '#ef4444', grid: { show: false }, side: 3, size: 60, values: (_u: uPlot, vals: number[]) => vals.map(v => `${Math.round(v)} bpm`) },
         { show: false },
       ],
@@ -420,8 +420,8 @@
       width: progressContainer.clientWidth,
       height: 200,
       axes: [
-        { stroke: '#888', grid: { stroke: '#eee' }, values: (_u: uPlot, vals: number[]) => vals.map(v => new Date(v * 1000).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })) },
-        { stroke: '#888', grid: { stroke: '#eee' } },
+        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' }, values: (_u: uPlot, vals: number[]) => vals.map(v => new Date(v * 1000).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })) },
+        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
       ],
       series,
     };
@@ -880,10 +880,10 @@
     font-weight: var(--font-weight-medium, 500);
     text-transform: uppercase;
   }
-  .type-badge[data-type="ftp"] { background: #3b82f620; color: #3b82f6; }
-  .type-badge[data-type="lthr"] { background: #ef444420; color: #ef4444; }
-  .type-badge[data-type="threshold_pace"] { background: #22c55e20; color: #22c55e; }
-  .type-badge[data-type="max_hr"] { background: #f59e0b20; color: #f59e0b; }
+  .type-badge[data-type="ftp"] { background: var(--primary-bg); color: var(--primary); }
+  .type-badge[data-type="lthr"] { background: var(--danger-bg); color: var(--danger); }
+  .type-badge[data-type="threshold_pace"] { background: var(--success-bg); color: var(--success); }
+  .type-badge[data-type="max_hr"] { background: var(--warning-bg); color: var(--warning); }
   .result-value {
     font-weight: var(--font-weight-medium, 500);
   }
@@ -1085,7 +1085,7 @@
     white-space: nowrap;
     line-height: 1.6;
     z-index: 100;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: var(--shadow-sm);
     pointer-events: none;
   }
   .info-tip:hover .info-tip-content {
@@ -1177,8 +1177,8 @@
     cursor: pointer;
   }
   .btn-icon:hover { background: var(--hover); }
-  .btn-danger-icon { color: #dc2626; }
-  .btn-danger-icon:hover { background: #fee2e2; }
+  .btn-danger-icon { color: var(--danger); }
+  .btn-danger-icon:hover { background: var(--danger-bg); }
   @media (max-width: 768px) {
     .fitness-tests { padding: 16px; }
     .add-test-form { min-width: auto; }

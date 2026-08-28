@@ -81,8 +81,9 @@
   .activity-table {
     overflow-x: auto;
     background: var(--card-bg, var(--surface));
-    border: var(--card-border, 0.5px solid var(--border));
-    border-radius: var(--card-radius, 10px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--card-shadow);
     padding: var(--card-padding, 16px);
   }
   table {
@@ -97,13 +98,13 @@
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 0.5px solid var(--border);
+    border-bottom: 1px solid var(--border);
   }
   td {
     padding: 12px 0;
     font-size: var(--font-size-base, 13px);
     font-weight: var(--font-weight-regular, 400);
-    border-bottom: 0.5px solid var(--border);
+    border-bottom: 1px solid var(--border);
     vertical-align: middle;
   }
   tr:last-child td {

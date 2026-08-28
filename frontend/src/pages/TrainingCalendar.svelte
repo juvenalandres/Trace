@@ -33,12 +33,12 @@
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   const sportColors: Record<string, string> = {
-    run: '#22c55e',
-    ride: '#3b82f6',
-    swim: '#06b6d4',
-    hike: '#f97316',
-    walk: '#f59e0b',
-    other: '#8b5cf6',
+    run: 'var(--sport-run)',
+    ride: 'var(--sport-ride)',
+    swim: 'var(--sport-swim)',
+    hike: 'var(--sport-hike)',
+    walk: 'var(--sport-walk)',
+    other: 'var(--sport-other)',
   };
 
   async function load() {
@@ -82,7 +82,7 @@
       plans.flatMap(p =>
         (p.blocks || []).map((b, i, arr) => [
           b.id,
-          arr.length <= 1 ? '#3b82f6' : `hsl(${(i / arr.length) * 360}, 55%, 45%)`,
+          arr.length <= 1 ? 'var(--primary)' : `hsl(${(i / arr.length) * 360}, 55%, 45%)`,
         ] as const)
       )
     )
@@ -309,7 +309,7 @@
                   <span class="progress-values">{(currentWeek.total_actual_distance_m / 1000).toFixed(1)} / {(currentWeek.total_planned_distance_m / 1000).toFixed(1)} km</span>
                 </div>
                 <div class="progress-bar-bg">
-                  <div class="progress-bar-fill" style="width: {pct}%; background: {pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444'}"></div>
+                  <div class="progress-bar-fill" style="width: {pct}%; background: {pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)'}"></div>
                 </div>
               </div>
             {/if}
@@ -321,7 +321,7 @@
                   <span class="progress-values">{currentWeek.total_actual_count} / {currentWeek.total_planned_count}</span>
                 </div>
                 <div class="progress-bar-bg">
-                  <div class="progress-bar-fill" style="width: {pct}%; background: {pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444'}"></div>
+                  <div class="progress-bar-fill" style="width: {pct}%; background: {pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)'}"></div>
                 </div>
               </div>
             {/if}
@@ -719,7 +719,7 @@
     background: var(--hover);
   }
   .picker-month.selected {
-    background: #378ADD;
+    background: var(--primary);
     color: #fff;
     font-weight: 500;
   }
@@ -847,8 +847,8 @@
     flex-shrink: 0;
   }
   .chip-rest {
-    background: #d1d5db;
-    color: #6b7280;
+    background: var(--border);
+    color: var(--text-secondary);
   }
   .chip-label {
     font-size: 9px;
@@ -887,8 +887,8 @@
     border-radius: 50%;
   }
   .legend-dot-rest {
-    background: #d1d5db;
-    border: 1px solid #9ca3af;
+    background: var(--border);
+    border: 1px solid var(--text-tertiary);
   }
 
   .no-sessions {
@@ -922,11 +922,11 @@
   .sdb {
     font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 6px;
   }
-  .sdb-rest { background: #f3f4f6; color: #6b7280; }
-  .sdb-sport { background: #3b82f620; color: #3b82f6; text-transform: uppercase; }
-  .sdb-done { background: #dcfce7; color: #166534; }
-  .sdb-skip { background: #fef3c7; color: #92400e; }
-  .sdb-plan { background: #e0f2fe; color: #0369a1; }
+  .sdb-rest { background: var(--bg-subtle); color: var(--text-secondary); }
+  .sdb-sport { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); text-transform: uppercase; }
+  .sdb-done { background: var(--success-bg); color: var(--success-text); }
+  .sdb-skip { background: var(--warning-bg); color: var(--warning-text); }
+  .sdb-plan { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
 
   .sd-body { display: flex; flex-direction: column; gap: 10px; }
 
@@ -979,8 +979,8 @@
     padding: 2px 8px;
     border-radius: 10px;
   }
-  .status-badge.completed { background: #dcfce7; color: #166534; }
-  .status-badge.skipped { background: #fef3c7; color: #92400e; }
+  .status-badge.completed { background: var(--success-bg); color: var(--success-text); }
+  .status-badge.skipped { background: var(--warning-bg); color: var(--warning-text); }
   .session-name {
     font-size: 20px;
     font-weight: 700;
@@ -1004,7 +1004,7 @@
   .sb-interval-item {
     font-size: 13px; color: var(--text); line-height: 1.5;
   }
-  .sb-interval-item::before { content: '•'; margin-right: 5px; color: var(--text-tertiary, #9ca3af); }
+  .sb-interval-item::before { content: '•'; margin-right: 5px; color: var(--text-tertiary); }
   .target-badge {
     display: inline-block;
     font-size: 11px;
@@ -1019,12 +1019,12 @@
     gap: 4px;
     margin-bottom: 4px;
   }
-  .target-distance { background: #3b82f620; color: #3b82f6; }
-  .target-duration { background: #6b728020; color: #6b7280; }
-  .target-pace { background: #22c55e20; color: #22c55e; }
-  .target-hr_zone { background: #ef444420; color: #ef4444; }
-  .target-power_zone { background: #3b82f620; color: #3b82f6; }
-  .target-free { background: #8b5cf620; color: #8b5cf6; }
+  .target-distance { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+  .target-duration { background: color-mix(in srgb, var(--text-secondary) 12%, transparent); color: var(--text-secondary); }
+  .target-pace { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+  .target-hr_zone { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .target-power_zone { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+  .target-free { background: color-mix(in srgb, #8b5cf6 12%, transparent); color: #8b5cf6; }
   .plan-selector {
     display: flex;
     gap: 8px;
@@ -1191,7 +1191,7 @@
     border-left: 3px solid var(--border);
   }
   .week-session-card.rest {
-    border-left: 3px solid #d1d5db;
+    border-left: 3px solid var(--border);
     opacity: 0.7;
   }
   .week-session-top {
@@ -1208,7 +1208,7 @@
     letter-spacing: 0.3px;
   }
   .rest-text {
-    color: #6b7280;
+    color: var(--text-secondary);
   }
   .week-session-name {
     font-size: 12px;

@@ -3,6 +3,7 @@
   import { userApi, authApi } from '$lib/api/types';
   import type { User } from '$lib/api/types';
   import Icon from '$lib/components/Icon.svelte';
+  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import Login from './pages/Login.svelte';
   import Dashboard from './pages/Dashboard.svelte';
   import Activities from './pages/Activities.svelte';
@@ -85,6 +86,7 @@
         </div>
       </div>
       <div class="topbar-right">
+        <ThemeToggle />
         <button class="user-badge" onclick={() => navigate('profile')} title="Profile">
           <div class="avatar">{getUserInitial()}</div>
           {#if user?.name}
@@ -293,7 +295,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
+    padding: 0 var(--space-5);
     flex-shrink: 0;
     width: 100%;
     box-sizing: border-box;
@@ -302,19 +304,20 @@
   .topbar-left {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: var(--space-3);
   }
   .toggle-btn {
-    width: 44px;
-    height: 44px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: none;
     color: var(--text-secondary);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background var(--transition-fast), color var(--transition-fast);
   }
   .toggle-btn:hover {
     background: var(--hover);
@@ -323,30 +326,33 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
   }
   .brand-logo {
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     flex-shrink: 0;
   }
   .brand-name {
     font-size: 20px;
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     color: var(--primary);
+    letter-spacing: -0.3px;
   }
   .topbar-right {
     display: flex;
     align-items: center;
+    gap: var(--space-2);
   }
   .user-badge {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
     border: none;
     background: none;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
+    transition: background var(--transition-fast);
   }
   .user-badge:hover {
     background: var(--hover);
@@ -356,16 +362,16 @@
     height: 32px;
     border-radius: 50%;
     background: var(--primary);
-    color: white;
+    color: var(--surface);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
   .user-name {
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
     color: var(--text);
   }
   .body {
@@ -375,37 +381,38 @@
     min-height: 0;
   }
   .sidebar {
-    width: 200px;
+    width: 220px;
     background: var(--surface);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     padding: 12px 0;
     flex-shrink: 0;
-    transition: width 0.2s ease;
+    transition: width var(--transition-base);
+    overflow: hidden;
   }
   .sidebar.collapsed {
-    width: 56px;
+    width: 60px;
   }
   .nav-links {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 0 8px;
+    padding: 0 var(--space-2);
   }
   .nav-separator {
     height: 1px;
     background: var(--border);
-    margin: 6px 4px;
+    margin: var(--space-2) var(--space-1);
   }
   .nav-section-title {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--text-secondary);
-    padding: 4px 12px 2px;
+    color: var(--text-tertiary);
+    padding: var(--space-1) var(--space-3) 2px;
   }
   .nav-link {
     display: flex;
@@ -414,23 +421,35 @@
     padding: 10px 12px;
     border: none;
     background: none;
-    color: #475569;
+    color: var(--text-secondary);
     font-size: 14px;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     text-align: left;
     width: 100%;
     white-space: nowrap;
     overflow: hidden;
+    position: relative;
+    transition: background var(--transition-fast), color var(--transition-fast);
   }
   .nav-link:hover {
     background: var(--hover);
     color: var(--text);
   }
   .nav-link.active {
-    background: var(--primary-light);
+    background: var(--primary-bg);
     color: var(--primary);
     font-weight: 500;
+  }
+  .nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--primary);
   }
   .nav-icon {
     flex-shrink: 0;
@@ -461,22 +480,26 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0,0,0,0.3);
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       z-index: 99;
     }
     .sidebar {
       position: fixed;
       top: 56px;
-      left: -200px;
+      left: -220px;
       bottom: 0;
       z-index: 100;
-      transition: left 0.2s ease;
+      width: 220px;
+      transition: left var(--transition-base);
+      background: var(--surface);
     }
     .sidebar.mobile-open {
       left: 0;
     }
     .sidebar.collapsed {
-      width: 200px;
+      width: 220px;
     }
   }
 </style>

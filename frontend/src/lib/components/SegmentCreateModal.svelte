@@ -293,7 +293,7 @@
 
     let html = `<div class="tooltip-distance">${d.toFixed(2)} km</div>`;
     html += '<div class="tooltip-metrics">';
-    html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#6b7280"></span>Elevation: ${ele.toFixed(1)} m</div>`;
+    html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--text-secondary)"></span>Elevation: ${ele.toFixed(1)} m</div>`;
     if (slope !== undefined) {
       const sf = formatSlope(slope);
       html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:${sf.color}"></span>Slope: <span style="color:${sf.color};font-weight:500">${sf.text}</span> (${sf.label})</div>`;
@@ -352,20 +352,20 @@
       },
       axes: [
         {
-          stroke: '#888', grid: { stroke: '#eee' },
+          stroke: '#94a3b8', grid: { stroke: '#e2e8f0' },
           label: 'km', size: 36, font: '11px sans-serif',
           values: (self, ticks) => ticks.map(v => v.toFixed(1)),
         },
         {
-          stroke: '#888', grid: { stroke: '#eee' },
+          stroke: '#94a3b8', grid: { stroke: '#e2e8f0' },
           label: 'm', size: 36, font: '11px sans-serif',
         },
       ],
       series: [
         {},
         {
-          stroke: '#6b7280', width: 1.5,
-          fill: '#6b72801a',
+          stroke: '#94a3b8', width: 1.5,
+          fill: 'rgba(148,163,184,0.1)',
           points: { show: false },
         },
       ],
@@ -509,8 +509,8 @@
     font-family: var(--font-sans);
   }
   .segment-error {
-    background: #fee2e2;
-    color: #dc2626;
+    background: var(--danger-bg);
+    color: var(--danger);
     padding: 8px 12px;
     border-radius: 6px;
     font-size: var(--font-size-base, 13px);
@@ -531,10 +531,10 @@
     font-family: monospace;
   }
   .coord-start {
-    color: #22c55e;
+    color: var(--success);
   }
   .coord-end {
-    color: #ef4444;
+    color: var(--danger);
   }
   .coord-distance {
     font-weight: 500;

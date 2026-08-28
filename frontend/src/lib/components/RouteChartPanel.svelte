@@ -54,12 +54,12 @@
   let mouseY = 0;
 
   const allMetrics: MetricDef[] = [
-    { key: 'ele', label: 'Elevation', unit: 'm', color: '#6b7280' },
+    { key: 'ele', label: 'Elevation', unit: 'm', color: '#94a3b8' },
     { key: 'hr', label: 'Heart Rate', unit: 'bpm', color: '#ef4444' },
     { key: 'spd', label: 'Speed', unit: 'km/h', color: '#22c55e', factor: 3.6 },
     { key: 'pace', label: 'Pace', unit: 'min/km', color: '#22c55e', sports: ['run', 'walk', 'hike', 'swim'] },
     { key: 'pwr', label: 'Power', unit: 'W', color: '#3b82f6' },
-    { key: 'cad', label: 'Cadence', unit: 'spm', color: '#f97316' },
+    { key: 'cad', label: 'Cadence', unit: 'spm', color: '#f59e0b' },
   ];
 
   function extractValue(p: TimePoint, key: string): number | null {
@@ -171,7 +171,7 @@
           scales,
           axes: [
             { show: false },
-            { stroke: '#888', grid: { stroke: '#eee' } },
+            { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
           ],
           series: [
             {},
@@ -317,7 +317,7 @@
       iconAnchor: [6, 6],
     });
 
-    L.polyline(coords, { color: '#3b82f6', weight: 3 }).addTo(map);
+    L.polyline(coords, { color: 'var(--primary)', weight: 3 }).addTo(map);
     map.fitBounds(L.latLngBounds(coords));
 
     buildCharts();
@@ -467,7 +467,7 @@
     width: 12px;
     height: 12px;
     background: var(--primary);
-    border: 2px solid white;
+    border: 2px solid var(--surface);
     border-radius: 50%;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
@@ -478,7 +478,7 @@
     border-radius: 8px;
     padding: 10px 12px;
     font-size: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-md);
     z-index: 1000;
     pointer-events: none;
     min-width: 140px;

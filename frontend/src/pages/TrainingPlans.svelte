@@ -8,6 +8,7 @@
   import ErrorBanner from '$lib/components/ErrorBanner.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import TrainingPlanTimeline from '$lib/components/TrainingPlanTimeline.svelte';
+  import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
 
   let plans = $state<TrainingPlan[]>([]);
   let loading = $state(true);
@@ -234,7 +235,7 @@
   }
 
   function blockColor(index: number, total: number): string {
-    if (total <= 1) return '#3b82f6';
+    if (total <= 1) return 'var(--primary)';
     const hue = (index / total) * 360;
     return `hsl(${hue}, 55%, 45%)`;
   }
@@ -334,6 +335,114 @@
   {:else if error}
     <ErrorBanner message={error} retry={load} />
   {:else if selectedPlan}
+    {#if showSessionForm}
+    <div class="session-form-page">
+      <div class="page-header">
+        <button class="back-btn" onclick={() => showSessionForm = false}>
+          <Icon name="chevronLeft" size={16} />
+          Back
+        </button>
+        <h1>{editingSession ? 'Edit Session' : 'Add Session'}</h1>
+      </div>
+      <div class="session-form-container">
+        <div class="form">
+          <div class="field-row">
+            <div class="field">
+              <label for="sess-date">Date</label>
+              <input id="sess-date" type="date" bind:value={sessDate} />
+            </div>
+            <div class="field">
+              <label for="sess-sport">Sport</label>
+              <select id="sess-sport" bind:value={sessSport}>
+                <option value="">-</option>
+                {#each sportOptions as sport}
+                  <option value={sport}>{sport}</option>
+                {/each}
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="sess-name">Name</label>
+            <input id="sess-name" type="text" bind:value={sessName} placeholder="e.g. Long Run, Recovery Ride" />
+          </div>
+          <div class="field">
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={sessRestDay} />
+              Rest day
+            </label>
+          </div>
+          {#if selectedPlan && selectedPlan.blocks.length > 0}
+            <div class="field">
+              <label for="sess-block">Block</label>
+              <select id="sess-block" bind:value={sessBlockId}>
+                <option value={null}>- None -</option>
+                {#each selectedPlan.blocks as b}
+                  <option value={b.id}>{b.name}</option>
+                {/each}
+              </select>
+            </div>
+          {/if}
+          {#if !sessRestDay}
+            <div class="field">
+              <label>Targets</label>
+              <div class="targets-list">
+                {#each sessTargets as target, i}
+                  <div class="target-row">
+                    <select bind:value={target.type} class="target-type-select">
+                      <option value="">-</option>
+                      {#each targetTypeOptions as t}
+                        <option value={t}>{t}</option>
+                      {/each}
+                    </select>
+                    {#if target.type && targetUnitMap[target.type]?.length > 0}
+                      <input type="number" bind:value={target.value} step="any" placeholder="Value" class="target-value-input" />
+                      <select bind:value={target.unit} class="target-unit-select">
+                        <option value="">-</option>
+                        {#each targetUnitMap[target.type] as u}
+                          <option value={u}>{u}</option>
+                        {/each}
+                      </select>
+                    {/if}
+                    <button class="icon-btn danger" onclick={() => { sessTargets = sessTargets.filter((_, idx) => idx !== i); }} title="Remove target">
+                      <Icon name="logout" size={14} />
+                    </button>
+                  </div>
+                {/each}
+              </div>
+              <button class="btn btn-outline btn-sm" onclick={() => { sessTargets = [...sessTargets, { type: '', value: null, unit: null }]; }}>
+                <Icon name="segments" size={14} />
+                Add Target
+              </button>
+            </div>
+            <div class="field">
+              <label>Intervals</label>
+              <WorkoutEditor bind:json={sessIntervals} />
+            </div>
+          {/if}
+          <div class="field">
+            <label for="sess-desc">Description</label>
+            <textarea id="sess-desc" bind:value={sessDescription} rows="2" placeholder="Optional notes..."></textarea>
+          </div>
+          <div class="field">
+            <label for="sess-notes">Notes</label>
+            <textarea id="sess-notes" bind:value={sessNotes} rows="2" placeholder="Additional notes..."></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-outline" onclick={() => showSessionForm = false}>Cancel</button>
+            {#if editingSession}
+              <button class="btn btn-outline" onclick={() => trainingApi.downloadFit(editingSession.id, sessName || 'workout')}>
+                <Icon name="download" size={14} />
+                Download FIT
+              </button>
+            {/if}
+            <button class="btn btn-primary" onclick={saveSession} disabled={savingSession || !sessDate}>
+              {savingSession ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+      </div>
+    {:else}
     <div class="plan-detail">
       <div class="plan-header">
         <button class="back-btn" onclick={backToList}>
@@ -341,6 +450,10 @@
           Back
         </button>
         <div class="plan-actions">
+          <button class="btn btn-outline" onclick={() => trainingApi.downloadPlanZip(selectedPlan.id, selectedPlan.name)}>
+            <Icon name="download" size={16} />
+            Export Plan
+          </button>
           <button class="btn btn-outline" onclick={() => openEditPlan(selectedPlan)}>
             <Icon name="segments" size={16} />
             Edit Plan
@@ -363,7 +476,7 @@
               <span>{formatDate(selectedPlan.start_date)}</span>
             {/if}
             {#if selectedPlan.start_date && selectedPlan.end_date}
-              <span class="date-sep">→</span>
+              <span class="date-sep">&rarr;</span>
             {/if}
             {#if selectedPlan.end_date}
               <span>{formatDate(selectedPlan.end_date)}</span>
@@ -417,7 +530,7 @@
                       <span class="block-desc">{group.block.description}</span>
                     {/if}
                     {#if group.block.start_date || group.block.end_date}
-                      <span class="block-dates">{group.block.start_date ? formatDate(group.block.start_date) : ''} {group.block.start_date && group.block.end_date ? '→' : ''} {group.block.end_date ? formatDate(group.block.end_date) : ''}</span>
+                      <span class="block-dates">{group.block.start_date ? formatDate(group.block.start_date) : ''} {group.block.start_date && group.block.end_date ? '&rarr;' : ''} {group.block.end_date ? formatDate(group.block.end_date) : ''}</span>
                     {/if}
                     <span class="block-count">{group.sessions.length} session{group.sessions.length !== 1 ? 's' : ''}</span>
                   </div>
@@ -458,6 +571,9 @@
                         <div class="session-notes">{s.notes}</div>
                       {/if}
                       <div class="session-actions">
+                        <button class="icon-btn" onclick={() => trainingApi.downloadFit(s.id, s.name || 'workout')} title="Download FIT">
+                          <Icon name="download" size={16} />
+                        </button>
                         <button class="icon-btn" onclick={() => openEditSession(s)} title="Edit">
                           <Icon name="segments" size={16} />
                         </button>
@@ -506,6 +622,9 @@
                         <div class="session-notes">{s.notes}</div>
                       {/if}
                       <div class="session-actions">
+                        <button class="icon-btn" onclick={() => trainingApi.downloadFit(s.id, s.name || 'workout')} title="Download FIT">
+                          <Icon name="download" size={16} />
+                        </button>
                         <button class="icon-btn" onclick={() => openEditSession(s)} title="Edit">
                           <Icon name="segments" size={16} />
                         </button>
@@ -521,7 +640,8 @@
           </div>
         {/if}
       </div>
-    </div>
+      </div>
+    {/if}
   {:else}
     <div class="page-header">
       <h1>Training Plans</h1>
@@ -550,7 +670,7 @@
                   <span>{formatDate(p.start_date)}</span>
                 {/if}
                 {#if p.start_date && p.end_date}
-                  <span>→</span>
+                  <span>&rarr;</span>
                 {/if}
                 {#if p.end_date}
                   <span>{formatDate(p.end_date)}</span>
@@ -600,98 +720,6 @@
     <div class="form-actions">
       <button class="btn btn-outline" onclick={() => showDeletePlan = false}>Cancel</button>
       <button class="btn btn-danger" onclick={confirmDeletePlan}>Delete</button>
-    </div>
-  </div>
-</Modal>
-
-<Modal open={showSessionForm} title={editingSession ? 'Edit Session' : 'Add Session'} onClose={() => showSessionForm = false}>
-  <div class="form">
-    <div class="field-row">
-      <div class="field">
-        <label for="sess-date">Date</label>
-        <input id="sess-date" type="date" bind:value={sessDate} />
-      </div>
-      <div class="field">
-        <label for="sess-sport">Sport</label>
-        <select id="sess-sport" bind:value={sessSport}>
-          <option value="">-</option>
-          {#each sportOptions as sport}
-            <option value={sport}>{sport}</option>
-          {/each}
-        </select>
-      </div>
-    </div>
-    <div class="field">
-      <label for="sess-name">Name</label>
-      <input id="sess-name" type="text" bind:value={sessName} placeholder="e.g. Long Run, Recovery Ride" />
-    </div>
-    <div class="field">
-      <label class="checkbox-label">
-        <input type="checkbox" bind:checked={sessRestDay} />
-        Rest day
-      </label>
-    </div>
-    {#if selectedPlan && selectedPlan.blocks.length > 0}
-      <div class="field">
-        <label for="sess-block">Block</label>
-        <select id="sess-block" bind:value={sessBlockId}>
-          <option value={null}>- None -</option>
-          {#each selectedPlan.blocks as b}
-            <option value={b.id}>{b.name}</option>
-          {/each}
-        </select>
-      </div>
-    {/if}
-    {#if !sessRestDay}
-      <div class="field">
-        <label>Targets</label>
-        <div class="targets-list">
-          {#each sessTargets as target, i}
-            <div class="target-row">
-              <select bind:value={target.type} class="target-type-select">
-                <option value="">-</option>
-                {#each targetTypeOptions as t}
-                  <option value={t}>{t}</option>
-                {/each}
-              </select>
-              {#if target.type && targetUnitMap[target.type]?.length > 0}
-                <input type="number" bind:value={target.value} step="any" placeholder="Value" class="target-value-input" />
-                <select bind:value={target.unit} class="target-unit-select">
-                  <option value="">-</option>
-                  {#each targetUnitMap[target.type] as u}
-                    <option value={u}>{u}</option>
-                  {/each}
-                </select>
-              {/if}
-              <button class="icon-btn danger" onclick={() => { sessTargets = sessTargets.filter((_, idx) => idx !== i); }} title="Remove target">
-                <Icon name="logout" size={14} />
-              </button>
-            </div>
-          {/each}
-        </div>
-        <button class="btn btn-outline btn-sm" onclick={() => { sessTargets = [...sessTargets, { type: '', value: null, unit: null }]; }}>
-          <Icon name="segments" size={14} />
-          Add Target
-        </button>
-      </div>
-      <div class="field">
-        <label for="sess-intervals">Intervals (JSON)</label>
-        <textarea id="sess-intervals" bind:value={sessIntervals} rows="3" placeholder="e.g. warmup 10min, work 4x4min @250W"></textarea>
-      </div>
-    {/if}
-    <div class="field">
-      <label for="sess-desc">Description</label>
-      <textarea id="sess-desc" bind:value={sessDescription} rows="2" placeholder="Optional notes..."></textarea>
-    </div>
-    <div class="field">
-      <label for="sess-notes">Notes</label>
-      <textarea id="sess-notes" bind:value={sessNotes} rows="2" placeholder="Additional notes..."></textarea>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-outline" onclick={() => showSessionForm = false}>Cancel</button>
-      <button class="btn btn-primary" onclick={saveSession} disabled={savingSession || !sessDate}>
-        {savingSession ? 'Saving...' : 'Save'}
-      </button>
     </div>
   </div>
 </Modal>
@@ -754,6 +782,7 @@
 <style>
   .page {
     max-width: 1200px;
+    margin: 0 auto;
   }
   .page-header {
     display: flex;
@@ -785,10 +814,11 @@
     cursor: pointer;
     text-align: left;
     width: 100%;
-    transition: border-color 0.15s;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   }
   .plan-card:hover {
     border-color: var(--primary);
+    box-shadow: var(--shadow-sm);
   }
   .plan-card-header {
     display: flex;
@@ -843,7 +873,8 @@
     font-size: var(--font-size-base, 13px);
     font-weight: var(--font-weight-medium, 500);
     padding: 6px 10px;
-    border-radius: 6px;
+    border-radius: var(--radius-md, 6px);
+    transition: background var(--transition-fast);
   }
   .back-btn:hover { background: var(--primary-light); }
   .plan-actions {
@@ -886,7 +917,7 @@
     display: flex;
     gap: 2px;
     background: var(--bg);
-    border-radius: 8px;
+    border-radius: var(--radius-lg, 8px);
     padding: 2px;
   }
   .toggle-btn {
@@ -895,19 +926,19 @@
     gap: 4px;
     padding: 4px 10px;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-md, 6px);
     font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 500;
+    font-size: var(--font-size-xs, 12px);
+    font-weight: var(--font-weight-medium, 500);
     cursor: pointer;
     background: transparent;
     color: var(--text-secondary);
-    transition: background .1s, color .1s;
+    transition: background var(--transition-fast), color var(--transition-fast);
   }
   .toggle-btn.active {
     background: var(--surface);
     color: var(--text);
-    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    box-shadow: var(--shadow-xs, 0 1px 3px rgba(0,0,0,.08));
   }
   .toggle-btn:hover:not(.active) { color: var(--text); }
   .sessions-list {
@@ -921,7 +952,9 @@
     border-radius: var(--card-radius, 10px);
     padding: 14px 16px;
     position: relative;
+    transition: box-shadow var(--transition-fast);
   }
+  .session-card:hover { box-shadow: var(--shadow-sm); }
   .session-card.rest-day {
     border-style: dashed;
     opacity: 0.7;
@@ -947,12 +980,12 @@
     background: var(--bg);
     color: var(--text-secondary);
   }
-  .sport-run { background: #22c55e20; color: #22c55e; }
-  .sport-ride { background: #3b82f620; color: #3b82f6; }
-  .sport-swim { background: #06b6d420; color: #06b6d4; }
-  .sport-hike { background: #f9731620; color: #f97316; }
-  .sport-walk { background: #f59e0b20; color: #f59e0b; }
-  .sport-other { background: #8b5cf620; color: #8b5cf6; }
+  .sport-run { background: var(--success-bg); color: var(--success); }
+  .sport-ride { background: var(--primary-bg); color: var(--primary); }
+  .sport-swim { background: color-mix(in srgb, var(--sport-swim) 12%, transparent); color: var(--sport-swim); }
+  .sport-hike { background: color-mix(in srgb, var(--sport-hike) 12%, transparent); color: var(--sport-hike); }
+  .sport-walk { background: var(--warning-bg); color: var(--warning); }
+  .sport-other { background: color-mix(in srgb, var(--sport-other) 12%, transparent); color: var(--sport-other); }
   .target-badge {
     display: inline-block;
     font-size: var(--font-size-xs, 11px);
@@ -967,12 +1000,12 @@
     gap: 4px;
     margin-bottom: 4px;
   }
-  .target-distance { background: #3b82f620; color: #3b82f6; }
-  .target-duration { background: #6b728020; color: #6b7280; }
-  .target-pace { background: #22c55e20; color: #22c55e; }
-  .target-hr_zone { background: #ef444420; color: #ef4444; }
-  .target-power_zone { background: #3b82f620; color: #3b82f6; }
-  .target-free { background: #8b5cf620; color: #8b5cf6; }
+  .target-distance { background: var(--primary-bg); color: var(--primary); }
+  .target-duration { background: var(--bg-subtle); color: var(--text-secondary); }
+  .target-pace { background: var(--success-bg); color: var(--success); }
+  .target-hr_zone { background: var(--danger-bg); color: var(--danger); }
+  .target-power_zone { background: var(--primary-bg); color: var(--primary); }
+  .target-free { background: color-mix(in srgb, #8b5cf6 12%, transparent); color: #8b5cf6; }
   .targets-list {
     display: flex;
     flex-direction: column;
@@ -998,8 +1031,8 @@
     font-weight: var(--font-weight-medium, 500);
     padding: 2px 8px;
     border-radius: 10px;
-    background: #f3f4f6;
-    color: #6b7280;
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
   }
   .status-badge {
     font-size: var(--font-size-xs, 11px);
@@ -1007,8 +1040,8 @@
     padding: 2px 8px;
     border-radius: 10px;
   }
-  .status-badge.completed { background: #dcfce7; color: #166534; }
-  .status-badge.skipped { background: #fef3c7; color: #92400e; }
+  .status-badge.completed { background: var(--success-bg); color: var(--success-text); }
+  .status-badge.skipped { background: var(--warning-bg); color: var(--warning-text); }
   .session-name {
     font-size: var(--font-size-md, 14px);
     font-weight: var(--font-weight-medium, 500);
@@ -1028,7 +1061,7 @@
     display: flex;
     gap: 4px;
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: opacity var(--transition-fast);
   }
   .session-card:hover .session-actions { opacity: 1; }
 
@@ -1039,7 +1072,7 @@
     justify-content: space-between;
     padding: 10px 14px;
     background: var(--surface);
-    border-radius: 8px 8px 0 0;
+    border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
     border-bottom: 0.5px solid var(--border);
   }
   .block-header.ungrouped { border-left: 4px solid var(--border); }
@@ -1058,7 +1091,7 @@
     font-size: var(--font-size-xs, 11px);
     color: var(--text-secondary);
     padding: 1px 6px;
-    border-radius: 6px;
+    border-radius: var(--radius-md, 6px);
     background: var(--bg);
   }
   .block-desc, .block-dates, .block-count {
@@ -1073,7 +1106,7 @@
     gap: 8px;
     padding: 12px;
     background: var(--bg);
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 var(--radius-md, 8px) var(--radius-md, 8px);
     border: 0.5px solid var(--border);
     border-top: none;
   }
@@ -1089,12 +1122,14 @@
     gap: 6px;
     padding: 8px 16px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-md, 8px);
     font-family: var(--font-sans);
     font-size: var(--font-size-base, 13px);
     font-weight: var(--font-weight-medium, 500);
     cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
   }
+  .btn:active:not(:disabled) { transform: scale(0.97); }
   .btn-primary { background: var(--primary); color: white; }
   .btn-primary:hover { opacity: 0.9; }
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -1105,11 +1140,11 @@
   }
   .btn-outline:hover { background: var(--hover); }
   .btn-danger {
-    background: #fee2e2;
-    color: #dc2626;
-    border: 0.5px solid #fecaca;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 0.5px solid var(--danger-border);
   }
-  .btn-danger:hover { background: #fecaca; }
+  .btn-danger:hover { background: color-mix(in srgb, var(--danger) 15%, transparent); }
   .icon-btn {
     width: 32px;
     height: 32px;
@@ -1117,19 +1152,41 @@
     background: none;
     color: var(--text-secondary);
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: var(--radius-md, 6px);
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all var(--transition-fast);
   }
   .icon-btn:hover { background: var(--hover); color: var(--text); }
-  .icon-btn.danger:hover { background: #fee2e2; color: #dc2626; }
+  .icon-btn.danger:hover { background: var(--danger-bg); color: var(--danger); }
+
+  .session-form-page {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .session-form-page .page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .session-form-page .page-header h1 {
+    font-size: var(--font-size-2xl, 22px);
+    font-weight: var(--font-weight-medium, 500);
+    margin: 0;
+  }
+  .session-form-container {
+    background: var(--card-bg, var(--surface));
+    border: var(--card-border, 0.5px solid var(--border));
+    border-radius: var(--card-radius, 10px);
+    padding: 24px;
+  }
 
   .form {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    min-width: 360px;
+    gap: 16px;
     font-family: var(--font-sans);
   }
   .field {
@@ -1163,16 +1220,18 @@
   input, select, textarea {
     padding: 10px 12px;
     border: 0.5px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-md, 8px);
     font-family: var(--font-sans);
     font-size: var(--font-size-base, 13px);
     font-weight: var(--font-weight-regular, 400);
     background: var(--bg);
     color: var(--text);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   }
   input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-bg);
   }
   .form-actions {
     display: flex;
@@ -1187,7 +1246,7 @@
     color: var(--text);
   }
   .delete-confirm .warning {
-    color: #dc2626;
+    color: var(--danger);
     font-size: var(--font-size-base, 13px);
     font-weight: var(--font-weight-regular, 400);
     margin-bottom: 16px;

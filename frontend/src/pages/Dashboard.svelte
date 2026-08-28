@@ -23,12 +23,12 @@
   let selectedPeriod = $state<'week' | 'month' | 'all_time'>('month');
 
   const sportColors: Record<string, string> = {
-    run: '#22c55e',
-    ride: '#3b82f6',
-    swim: '#06b6d4',
-    hike: '#f97316',
-    walk: '#f59e0b',
-    other: '#8b5cf6',
+    run: 'var(--sport-run)',
+    ride: 'var(--sport-ride)',
+    swim: 'var(--sport-swim)',
+    hike: 'var(--sport-hike)',
+    walk: 'var(--sport-walk)',
+    other: 'var(--sport-other)',
   };
 
   const sportIcons: Record<string, string> = {
@@ -216,8 +216,8 @@
     <!-- Metric Cards -->
     {#if currentStats}
       <div class="metric-grid">
-        <div class="dash-metric-card">
-          <div class="metric-icon" style="background: #3b82f620; color: #3b82f6">
+        <div class="dash-metric-card" style="--accent: var(--primary)">
+          <div class="metric-icon">
             <Icon name="distance" size={18} />
           </div>
           <div class="metric-label">Distance</div>
@@ -232,13 +232,13 @@
           {/if}
           <div class="sparkline-wrap">
             <svg viewBox="0 0 100 16" preserveAspectRatio="none">
-              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.distance_m), 100, 16) : ''} stroke="#3b82f6" stroke-width="1.5" fill="none" />
+              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.distance_m), 100, 16) : ''} stroke="var(--primary)" stroke-width="1.5" fill="none" />
             </svg>
           </div>
         </div>
 
-        <div class="dash-metric-card">
-          <div class="metric-icon" style="background: #14b8a620; color: #14b8a6">
+        <div class="dash-metric-card" style="--accent: var(--accent-teal)">
+          <div class="metric-icon">
             <Icon name="duration" size={18} />
           </div>
           <div class="metric-label">Duration</div>
@@ -253,13 +253,13 @@
           {/if}
           <div class="sparkline-wrap">
             <svg viewBox="0 0 100 16" preserveAspectRatio="none">
-              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.duration_s), 100, 16) : ''} stroke="#14b8a6" stroke-width="1.5" fill="none" />
+              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.duration_s), 100, 16) : ''} stroke="var(--accent-teal)" stroke-width="1.5" fill="none" />
             </svg>
           </div>
         </div>
 
-        <div class="dash-metric-card">
-          <div class="metric-icon" style="background: #f59e0b20; color: #f59e0b">
+        <div class="dash-metric-card" style="--accent: var(--warning)">
+          <div class="metric-icon">
             <Icon name="elevation" size={18} />
           </div>
           <div class="metric-label">Elevation</div>
@@ -274,13 +274,13 @@
           {/if}
           <div class="sparkline-wrap">
             <svg viewBox="0 0 100 16" preserveAspectRatio="none">
-              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.elevation_m), 100, 16) : ''} stroke="#f59e0b" stroke-width="1.5" fill="none" />
+              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.elevation_m), 100, 16) : ''} stroke="var(--warning)" stroke-width="1.5" fill="none" />
             </svg>
           </div>
         </div>
 
-        <div class="dash-metric-card">
-          <div class="metric-icon" style="background: #f9731620; color: #f97316">
+        <div class="dash-metric-card" style="--accent: var(--sport-hike)">
+          <div class="metric-icon">
             <Icon name="activity" size={18} />
           </div>
           <div class="metric-label">Activities</div>
@@ -294,7 +294,7 @@
           </div>
           <div class="sparkline-wrap">
             <svg viewBox="0 0 100 16" preserveAspectRatio="none">
-              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.count), 100, 16) : ''} stroke="#f97316" stroke-width="1.5" fill="none" />
+              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.count), 100, 16) : ''} stroke="var(--sport-hike)" stroke-width="1.5" fill="none" />
             </svg>
           </div>
         </div>
@@ -372,8 +372,7 @@
   .dashboard {
     max-width: 900px;
     margin: 0 auto;
-    padding: 24px;
-    font-family: var(--font-sans);
+    padding: var(--space-6);
   }
 
   /* Topbar */
@@ -381,39 +380,36 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 24px;
+    margin-bottom: var(--space-6);
   }
   .greeting h1 {
-    font-size: 22px;
-    font-weight: 500;
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-semibold);
     margin: 0;
     color: var(--text);
   }
   .date-text {
-    font-size: 13px;
-    font-weight: 400;
+    font-size: var(--font-size-base);
     color: var(--text-secondary);
-    margin: 4px 0 0;
+    margin: var(--space-1) 0 0;
   }
   .topbar-right {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-3);
   }
   .log-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--surface);
     color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 13px;
-    font-weight: 400;
+    font-size: var(--font-size-base);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--transition-fast);
   }
   .log-btn:hover {
     background: var(--hover);
@@ -423,24 +419,22 @@
   /* Period Tabs */
   .period-tabs {
     display: flex;
-    gap: 4px;
-    background: var(--bg);
-    border-radius: 10px;
-    padding: 4px;
-    margin-bottom: 20px;
+    gap: var(--space-1);
+    background: var(--bg-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-1);
+    margin-bottom: var(--space-5);
     width: fit-content;
   }
   .period-tab {
-    padding: 8px 16px;
+    padding: var(--space-2) var(--space-4);
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: none;
     color: var(--text-secondary);
-    font-family: var(--font-sans);
-    font-size: 13px;
-    font-weight: 400;
+    font-size: var(--font-size-base);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--transition-fast);
   }
   .period-tab:hover {
     color: var(--text);
@@ -448,74 +442,81 @@
   .period-tab.active {
     background: var(--surface);
     color: var(--text);
-    font-weight: 500;
-    border: 1px solid var(--border);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    font-weight: var(--font-weight-medium);
+    box-shadow: var(--shadow-xs);
   }
 
   /* Metric Cards */
   .metric-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
   }
   .dash-metric-card {
     background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
+    border: var(--card-border);
+    border-radius: var(--card-radius);
+    padding: var(--card-padding);
+    box-shadow: var(--card-shadow);
+    border-left: 3px solid var(--accent, var(--primary));
+    transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  }
+  .dash-metric-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
   }
   .metric-icon {
     width: 32px;
     height: 32px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 10px;
+    margin-bottom: var(--space-3);
+    background: color-mix(in srgb, var(--accent, var(--primary)) 12%, transparent);
+    color: var(--accent, var(--primary));
   }
   .metric-label {
-    font-size: 11px;
-    font-weight: 500;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-secondary);
-    margin-bottom: 4px;
+    margin-bottom: var(--space-1);
   }
   .metric-value {
-    font-size: 26px;
-    font-weight: 500;
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-medium);
     color: var(--text);
     line-height: 1.1;
+    font-variant-numeric: tabular-nums;
   }
   .metric-unit {
-    font-size: 13px;
-    font-weight: 400;
+    font-size: var(--font-size-base);
     color: var(--text-secondary);
   }
   .metric-trend {
-    font-size: 12px;
-    font-weight: 400;
-    margin-top: 8px;
+    font-size: var(--font-size-sm);
+    margin-top: var(--space-2);
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
   }
   .metric-trend.positive {
-    color: #22c55e;
+    color: var(--success);
   }
   .metric-trend.negative {
-    color: #ef4444;
+    color: var(--danger);
   }
   .metric-trend.muted {
     color: var(--text-secondary);
   }
   .trend-arrow {
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
   }
   .sparkline-wrap {
-    margin-top: 10px;
+    margin-top: var(--space-3);
     height: 16px;
   }
   .sparkline-wrap svg {
@@ -528,8 +529,8 @@
   .two-col-row {
     display: grid;
     grid-template-columns: 3fr 2fr;
-    gap: 12px;
-    margin-bottom: 20px;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
   }
 
   /* Dash Card */
@@ -541,13 +542,12 @@
   }
 
   .view-all-link {
-    font-size: 13px;
-    font-weight: 400;
+    font-size: var(--font-size-base);
     color: var(--primary);
     background: none;
     border: none;
     cursor: pointer;
-    font-family: var(--font-sans);
+    transition: color var(--transition-fast);
   }
   .view-all-link:hover {
     text-decoration: underline;
@@ -560,13 +560,13 @@
   .table-header {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
-    gap: 8px;
-    padding: 8px 0;
-    border-bottom: 0.5px solid var(--border);
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border);
   }
   .table-header span {
-    font-size: 11px;
-    font-weight: 500;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-secondary);
@@ -574,9 +574,9 @@
   .table-row {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
-    gap: 8px;
-    padding: 12px 0;
-    border-bottom: 0.5px solid var(--border);
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--border);
     align-items: center;
     background: none;
     border-left: none;
@@ -584,8 +584,8 @@
     border-top: none;
     width: 100%;
     cursor: pointer;
-    font-family: var(--font-sans);
     text-align: left;
+    transition: background var(--transition-fast);
   }
   .table-row:last-child {
     border-bottom: none;
@@ -596,7 +596,7 @@
   .col-activity {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-3);
   }
   .activity-dot {
     width: 8px;
@@ -609,48 +609,43 @@
     flex-direction: column;
   }
   .activity-name {
-    font-size: 13px;
-    font-weight: 500;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
     color: var(--text);
   }
   .activity-sport {
-    font-size: 11px;
-    font-weight: 400;
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
     text-transform: capitalize;
   }
   .col-date {
-    font-size: 13px;
-    font-weight: 400;
+    font-size: var(--font-size-base);
     color: var(--text-secondary);
     text-align: right;
   }
   .col-num {
-    font-size: 13px;
-    font-weight: 400;
-    color: var(--text);
+    font-size: var(--font-size-base);
     text-align: right;
+    font-variant-numeric: tabular-nums;
   }
   .pace-pill {
     display: inline-block;
-    background: var(--bg);
+    background: var(--bg-subtle);
     padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 400;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
   }
   .empty-text {
-    font-size: 13px;
-    font-weight: 400;
+    font-size: var(--font-size-base);
     color: var(--text-secondary);
     text-align: center;
-    padding: 20px 0;
+    padding: var(--space-5) 0;
   }
 
   @media (max-width: 768px) {
-    .dashboard { padding: 16px; }
-    .dash-topbar { flex-wrap: wrap; gap: 12px; }
+    .dashboard { padding: var(--space-4); }
+    .dash-topbar { flex-wrap: wrap; gap: var(--space-3); }
     .metric-grid { grid-template-columns: repeat(2, 1fr); }
     .two-col-row { grid-template-columns: 1fr; }
     .table-header, .table-row {

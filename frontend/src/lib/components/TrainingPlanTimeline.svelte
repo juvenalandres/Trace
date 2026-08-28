@@ -498,35 +498,35 @@
   .target-pill {
     font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 4px;
   }
-  .target-distance { background: #3b82f620; color: #3b82f6; }
-  .target-duration { background: #6b728020; color: #6b7280; }
-  .target-pace { background: #22c55e20; color: #22c55e; }
-  .target-hr_zone { background: #ef444420; color: #ef4444; }
-  .target-power_zone { background: #3b82f620; color: #3b82f6; }
-  .target-free { background: #8b5cf620; color: #8b5cf6; }
+  .target-distance { background: var(--primary-bg); color: var(--primary); }
+  .target-duration { background: rgba(107, 114, 128, 0.12); color: var(--text-secondary); }
+  .target-pace { background: var(--success-bg); color: var(--success); }
+  .target-hr_zone { background: var(--danger-bg); color: var(--danger); }
+  .target-power_zone { background: var(--primary-bg); color: var(--primary); }
+  .target-free { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
 
   .sport-tag {
     display: inline-block;
     font-size: 10px; font-weight: 600; text-transform: uppercase;
     padding: 1px 6px; border-radius: 4px; margin-top: 4px;
   }
-  .sport-run { background: #22c55e20; color: #22c55e; }
-  .sport-ride { background: #3b82f620; color: #3b82f6; }
-  .sport-swim { background: #06b6d420; color: #06b6d4; }
-  .sport-hike { background: #f9731620; color: #f97316; }
-  .sport-walk { background: #f59e0b20; color: #f59e0b; }
-  .sport-other { background: #8b5cf620; color: #8b5cf6; }
+  .sport-run { background: color-mix(in srgb, var(--sport-run) 12%, transparent); color: var(--sport-run); }
+  .sport-ride { background: var(--primary-bg); color: var(--primary); }
+  .sport-swim { background: color-mix(in srgb, var(--sport-swim) 12%, transparent); color: var(--sport-swim); }
+  .sport-hike { background: color-mix(in srgb, var(--sport-hike) 12%, transparent); color: var(--sport-hike); }
+  .sport-walk { background: color-mix(in srgb, var(--sport-walk) 12%, transparent); color: var(--sport-walk); }
+  .sport-other { background: color-mix(in srgb, var(--sport-other) 12%, transparent); color: var(--sport-other); }
 
   .session-footer {
     display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 4px;
   }
   .done-badge {
     font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px;
-    background: #dcfce7; color: #166534;
+    background: var(--success-bg); color: var(--success-text);
   }
   .skipped-badge {
     font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px;
-    background: #fef3c7; color: #92400e;
+    background: var(--warning-bg); color: var(--warning-text);
   }
 
   .sd {
@@ -549,11 +549,11 @@
   .sdb {
     font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 6px;
   }
-  .sdb-rest { background: #f3f4f6; color: #6b7280; }
-  .sdb-sport { background: #3b82f620; color: #3b82f6; text-transform: uppercase; }
-  .sdb-done { background: #dcfce7; color: #166534; }
-  .sdb-skip { background: #fef3c7; color: #92400e; }
-  .sdb-plan { background: #e0f2fe; color: #0369a1; }
+  .sdb-rest { background: var(--bg-subtle); color: var(--text-secondary); }
+  .sdb-sport { background: var(--primary-bg); color: var(--primary); text-transform: uppercase; }
+  .sdb-done { background: var(--success-bg); color: var(--success-text); }
+  .sdb-skip { background: var(--warning-bg); color: var(--warning-text); }
+  .sdb-plan { background: var(--info-bg); color: var(--info-text); }
 
   .sd-body { display: flex; flex-direction: column; gap: 10px; }
 

@@ -31,21 +31,21 @@
   let charts: uPlot[] = [];
 
   const sportColors: Record<string, string> = {
-    run: '#22c55e',
-    ride: '#3b82f6',
-    swim: '#06b6d4',
-    hike: '#f97316',
-    walk: '#f59e0b',
-    other: '#8b5cf6',
+    run: 'var(--sport-run)',
+    ride: 'var(--sport-ride)',
+    swim: 'var(--sport-swim)',
+    hike: 'var(--sport-hike)',
+    walk: 'var(--sport-walk)',
+    other: 'var(--sport-other)',
   };
 
   const prMeta = [
-    { key: 'longest_distance' as const, label: 'Longest Distance', unit: 'km', convert: (v: number) => (v / 1000).toFixed(1), color: '#3b82f6', icon: 'distance' },
-    { key: 'longest_duration' as const, label: 'Longest Duration', unit: '', convert: (v: number) => formatDuration(v), color: '#14b8a6', icon: 'duration' },
-    { key: 'highest_elevation' as const, label: 'Highest Elevation', unit: 'm', convert: (v: number) => v.toFixed(0), color: '#f97316', icon: 'elevation' },
-    { key: 'fastest_speed' as const, label: 'Fastest Avg Speed', unit: 'km/h', convert: (v: number) => (v * 3.6).toFixed(1), color: '#22c55e', icon: 'speed' },
-    { key: 'highest_hr' as const, label: 'Highest Avg HR', unit: 'bpm', convert: (v: number) => v.toFixed(0), color: '#ef4444', icon: 'heart' },
-    { key: 'max_speed' as const, label: 'Max Speed', unit: 'km/h', convert: (v: number) => (v * 3.6).toFixed(1), color: '#8b5cf6', icon: 'speed' },
+    { key: 'longest_distance' as const, label: 'Longest Distance', unit: 'km', convert: (v: number) => (v / 1000).toFixed(1), color: 'var(--chart-1)', icon: 'distance' },
+    { key: 'longest_duration' as const, label: 'Longest Duration', unit: '', convert: (v: number) => formatDuration(v), color: 'var(--chart-5)', icon: 'duration' },
+    { key: 'highest_elevation' as const, label: 'Highest Elevation', unit: 'm', convert: (v: number) => v.toFixed(0), color: 'var(--warning)', icon: 'elevation' },
+    { key: 'fastest_speed' as const, label: 'Fastest Avg Speed', unit: 'km/h', convert: (v: number) => (v * 3.6).toFixed(1), color: 'var(--chart-3)', icon: 'speed' },
+    { key: 'highest_hr' as const, label: 'Highest Avg HR', unit: 'bpm', convert: (v: number) => v.toFixed(0), color: 'var(--chart-2)', icon: 'heart' },
+    { key: 'max_speed' as const, label: 'Max Speed', unit: 'km/h', convert: (v: number) => (v * 3.6).toFixed(1), color: 'var(--chart-6)', icon: 'speed' },
   ];
 
   let prCards = $derived.by(() => {
@@ -138,14 +138,14 @@
       legend: { show: false },
       axes: [
         {
-          stroke: '#888',
+          stroke: '#94a3b8',
           values: (_u, ticks) => ticks.map(t => {
             const d = new Date(t * 1000);
             return months[d.getMonth()];
           }),
           grid: { show: false },
         },
-        { stroke: '#888', grid: { stroke: '#eee' } },
+        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
       ],
       series: [
         {},
@@ -209,14 +209,14 @@
       legend: { show: false },
       axes: [
         {
-          stroke: '#888',
+          stroke: '#94a3b8',
           values: (_u, ticks) => ticks.map(t => {
             const d = new Date(t * 1000);
             return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
           }),
           grid: { show: false },
         },
-        { stroke: '#888', grid: { stroke: '#eee' } },
+        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
       ],
       series: [
         {},
@@ -322,14 +322,14 @@
       legend: { show: false },
       axes: [
         {
-          stroke: '#888',
+          stroke: '#94a3b8',
           values: (_u, ticks) => ticks.map(t => {
             const d = new Date(t * 1000);
             return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
           }),
           grid: { show: false },
         },
-        { stroke: '#888', grid: { stroke: '#eee' } },
+        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
       ],
       series: [
         {},
@@ -397,14 +397,14 @@
       legend: { show: false },
       axes: [
         {
-          stroke: '#888',
+          stroke: '#94a3b8',
           values: (_u, ticks) => ticks.map(t => {
             const d = new Date(t * 1000);
             return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
           }),
           grid: { show: false },
         },
-        { stroke: '#888', grid: { stroke: '#eee' } },
+        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
       ],
       series: [
         {},
@@ -452,10 +452,10 @@
       
       html = `<div class="tooltip-date">${dateStr}</div>`;
       html += '<div class="tooltip-metrics">';
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#3b82f6"></span>CTL (Fitness): ${point.ctl.toFixed(1)}</div>`;
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#ef4444"></span>ATL (Fatigue): ${point.atl.toFixed(1)}</div>`;
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#22c55e"></span>TSB (Form): ${point.tsb.toFixed(1)}</div>`;
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#8b5cf6"></span>Load: ${point.training_load.toFixed(1)}</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-1)"></span>CTL (Fitness): ${point.ctl.toFixed(1)}</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-2)"></span>ATL (Fatigue): ${point.atl.toFixed(1)}</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-3)"></span>TSB (Form): ${point.tsb.toFixed(1)}</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-6)"></span>Load: ${point.training_load.toFixed(1)}</div>`;
       html += '</div>';
     } else if (type === 'acwr' && ctlData && ctlData.data.length >= 14) {
       const data = ctlData.data;
@@ -471,13 +471,13 @@
           const dateStr = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
           
           const status = acwr < 0.8 ? 'Undertrained' : acwr <= 1.0 ? 'Well-managed' : acwr <= 1.3 ? 'Sweet spot' : acwr <= 1.5 ? 'Caution' : 'Danger';
-          const color = acwr < 0.8 ? '#3b82f6' : acwr <= 1.3 ? '#22c55e' : acwr <= 1.5 ? '#f59e0b' : '#ef4444';
+          const color = acwr < 0.8 ? 'var(--chart-1)' : acwr <= 1.3 ? 'var(--chart-3)' : acwr <= 1.5 ? 'var(--chart-4)' : 'var(--chart-2)';
           
           html = `<div class="tooltip-date">${dateStr}</div>`;
           html += '<div class="tooltip-metrics">';
           html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:${color}"></span>ACWR: ${acwr.toFixed(2)}</div>`;
-          html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#8b5cf6"></span>Acute (7d): ${acute.toFixed(0)}</div>`;
-          html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#6b7280"></span>Chronic (28d avg/wk): ${chronicAvg.toFixed(0)}</div>`;
+          html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-6)"></span>Acute (7d): ${acute.toFixed(0)}</div>`;
+          html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--text-secondary)"></span>Chronic (28d avg/wk): ${chronicAvg.toFixed(0)}</div>`;
           html += `<div class="tooltip-row" style="color:${color};font-weight:600">${status}</div>`;
           html += '</div>';
         }
@@ -490,10 +490,10 @@
       
       html = `<div class="tooltip-date">${dateStr}</div>`;
       html += '<div class="tooltip-metrics">';
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#3b82f6"></span>Distance: ${(month.distance_m / 1000).toFixed(1)} km</div>`;
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#22c55e"></span>Duration: ${formatDuration(month.duration_s)}</div>`;
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#f97316"></span>Elevation: ${month.elevation_m.toFixed(0)} m</div>`;
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#8b5cf6"></span>Activities: ${month.count}</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-1)"></span>Distance: ${(month.distance_m / 1000).toFixed(1)} km</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-3)"></span>Duration: ${formatDuration(month.duration_s)}</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--warning)"></span>Elevation: ${month.elevation_m.toFixed(0)} m</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-6)"></span>Activities: ${month.count}</div>`;
       html += '</div>';
     } else if (type === 'weeklyLoad' && ctlData && idx < ctlData.weekly_loads.length) {
       const load = ctlData.weekly_loads[idx];
@@ -502,7 +502,7 @@
       
       html = `<div class="tooltip-date">${dateStr}</div>`;
       html += '<div class="tooltip-metrics">';
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#8b5cf6"></span>Load: ${load.load.toFixed(0)}</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-6)"></span>Load: ${load.load.toFixed(0)}</div>`;
       html += '</div>';
     }
 
@@ -555,11 +555,11 @@
   let currentTsb = $derived(ctlData && ctlData.data.length > 0 ? ctlData.data[ctlData.data.length - 1].tsb : null);
   let tsbStatus = $derived.by(() => {
     if (currentTsb === null) return null;
-    if (currentTsb >= 15) return { label: 'Peak Form', color: '#22c55e' };
-    if (currentTsb >= 5) return { label: 'Fresh', color: '#22c55e' };
-    if (currentTsb >= -10) return { label: 'Balanced', color: '#f59e0b' };
-    if (currentTsb >= -30) return { label: 'Fatigued', color: '#f97316' };
-    return { label: 'Overreaching', color: '#ef4444' };
+    if (currentTsb >= 15) return { label: 'Peak Form', color: 'var(--success)' };
+    if (currentTsb >= 5) return { label: 'Fresh', color: 'var(--success)' };
+    if (currentTsb >= -10) return { label: 'Balanced', color: 'var(--warning)' };
+    if (currentTsb >= -30) return { label: 'Fatigued', color: 'var(--warning)' };
+    return { label: 'Overreaching', color: 'var(--danger)' };
   });
 </script>
 
@@ -578,25 +578,25 @@
       <h2 class="section-title">Overview</h2>
       <div class="stat-grid">
         <StatCard label="Streak" value={insights.consistency_streak} unit="weeks" icon="milestones" />
-        <StatCard label="Avg Weekly" value={avgWeeklyKm.toFixed(1)} unit="km" icon="distance" color="#3b82f6" bg="#3b82f620" />
-        <StatCard label="Total Distance" value={formatKm(totalDistance)} unit="km" icon="distance" color="#3b82f6" bg="#3b82f620" />
-        <StatCard label="Total Duration" value={formatDuration(totalDuration)} icon="duration" color="#14b8a6" bg="#14b8a620" />
+        <StatCard label="Avg Weekly" value={avgWeeklyKm.toFixed(1)} unit="km" icon="distance" color="var(--chart-1)" bg="var(--chart-1)" />
+        <StatCard label="Total Distance" value={formatKm(totalDistance)} unit="km" icon="distance" color="var(--chart-1)" bg="var(--chart-1)" />
+        <StatCard label="Total Duration" value={formatDuration(totalDuration)} icon="duration" color="var(--chart-5)" bg="var(--chart-5)" />
       </div>
       {#if currentCtl !== null}
         <div class="metric-row">
           <div class="metric-card">
             <div class="metric-label">CTL (Fitness)</div>
-            <div class="metric-value" style="color: #3b82f6">{currentCtl.toFixed(1)}</div>
+            <div class="metric-value" style="color: var(--chart-1)">{currentCtl.toFixed(1)}</div>
             <div class="metric-desc">42-day rolling average</div>
           </div>
           <div class="metric-card">
             <div class="metric-label">ATL (Fatigue)</div>
-            <div class="metric-value" style="color: #ef4444">{currentAtl?.toFixed(1)}</div>
+            <div class="metric-value" style="color: var(--chart-2)">{currentAtl?.toFixed(1)}</div>
             <div class="metric-desc">7-day rolling average</div>
           </div>
           <div class="metric-card">
             <div class="metric-label">TSB (Form)</div>
-            <div class="metric-value" style="color: {tsbStatus?.color ?? '#6b7280'}">{currentTsb?.toFixed(1)}</div>
+            <div class="metric-value" style="color: {tsbStatus?.color ?? 'var(--text-secondary)'}">{currentTsb?.toFixed(1)}</div>
             {#if tsbStatus}
               <div class="metric-badge" style="background: {tsbStatus.color}20; color: {tsbStatus.color}">{tsbStatus.label}</div>
             {/if}
@@ -620,8 +620,8 @@
           <div class="chart-header">
             <h3>CTL / ATL / TSB</h3>
             <div class="pmc-legend">
-              <span class="legend-item"><span class="legend-line" style="background: #3b82f6"></span>CTL (Fitness)</span>
-              <span class="legend-item"><span class="legend-line" style="background: #ef4444"></span>ATL (Fatigue)</span>
+              <span class="legend-item"><span class="legend-line" style="background: var(--chart-1)"></span>CTL (Fitness)</span>
+              <span class="legend-item"><span class="legend-line" style="background: var(--chart-2)"></span>ATL (Fatigue)</span>
               <span class="legend-item"><span class="legend-area"></span>TSB (Form)</span>
             </div>
           </div>
@@ -655,9 +655,9 @@
             <div class="chart-header">
               <h3>ACWR Trend</h3>
               <div class="acwr-zones">
-                <span class="zone" style="background: #22c55e20">0.8-1.3</span>
-                <span class="zone" style="background: #f59e0b20">1.3-1.5</span>
-                <span class="zone" style="background: #ef444420">&gt;1.5</span>
+                <span class="zone" style="background: color-mix(in srgb, var(--success) 12%, transparent)">0.8-1.3</span>
+                <span class="zone" style="background: color-mix(in srgb, var(--warning) 12%, transparent)">1.3-1.5</span>
+                <span class="zone" style="background: color-mix(in srgb, var(--danger) 12%, transparent)">&gt;1.5</span>
               </div>
             </div>
             {#if ctlData && ctlData.data.length >= 14}
@@ -686,8 +686,8 @@
           <div class="chart-header">
             <h3>Monthly Volume</h3>
             <div class="volume-legend">
-              <span class="legend-item"><span class="legend-dot" style="background: #3b82f6"></span>Distance (km)</span>
-              <span class="legend-item"><span class="legend-dot" style="background: #22c55e"></span>Duration (h)</span>
+              <span class="legend-item"><span class="legend-dot" style="background: var(--chart-1)"></span>Distance (km)</span>
+              <span class="legend-item"><span class="legend-dot" style="background: var(--chart-3)"></span>Duration (h)</span>
             </div>
           </div>
           {#if volumeData && volumeData.monthly.length > 0}
@@ -746,7 +746,7 @@
         <h2 class="section-title">Recovery Status</h2>
         <div class="recovery-card">
           <div class="recovery-header">
-            <div class="recovery-icon" style="background: {tsbStatus?.color ?? '#6b7280'}20; color: {tsbStatus?.color ?? '#6b7280'}">
+            <div class="recovery-icon" style="background: {tsbStatus?.color ?? 'var(--text-secondary)'}20; color: {tsbStatus?.color ?? 'var(--text-secondary)'}">
               <Icon name="activity" size={24} />
             </div>
             <div>
@@ -933,8 +933,8 @@
   .legend-area {
     width: 16px;
     height: 10px;
-    background: rgba(34, 197, 94, 0.2);
-    border: 1px solid rgba(34, 197, 94, 0.5);
+    background: color-mix(in srgb, var(--chart-3) 20%, transparent);
+    border: 1px solid color-mix(in srgb, var(--chart-3) 50%, transparent);
     border-radius: 2px;
   }
   .acwr-zones {
@@ -1040,11 +1040,11 @@
     top: 0;
     height: 100%;
   }
-  .zone-overreaching { background: #ef444440; }
-  .zone-fatigued { background: #f9731640; }
-  .zone-balanced { background: #f59e0b40; }
-  .zone-fresh { background: #22c55e40; }
-  .zone-peak { background: #22c55e60; }
+  .zone-overreaching { background: color-mix(in srgb, var(--danger) 25%, transparent); }
+  .zone-fatigued { background: color-mix(in srgb, var(--warning) 25%, transparent); }
+  .zone-balanced { background: color-mix(in srgb, var(--chart-4) 25%, transparent); }
+  .zone-fresh { background: color-mix(in srgb, var(--success) 25%, transparent); }
+  .zone-peak { background: color-mix(in srgb, var(--success) 37%, transparent); }
   .recovery-marker {
     position: absolute;
     top: -4px;

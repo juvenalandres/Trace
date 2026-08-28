@@ -154,9 +154,9 @@
     const intervalM = s.maintenance_interval_km * 1000;
     const sinceM = s.total_distance_m - (s.last_service_distance_m ?? 0);
     const percent = Math.min(100, (sinceM / intervalM) * 100);
-    let color = '#22c55e';
-    if (percent >= 90) color = '#ef4444';
-    else if (percent >= 75) color = '#f59e0b';
+    let color = 'var(--success)';
+    if (percent >= 90) color = 'var(--danger)';
+    else if (percent >= 75) color = 'var(--warning)';
     return { percent, sinceKm: sinceM / 1000, intervalKm: s.maintenance_interval_km, color };
   }
 
@@ -558,8 +558,8 @@
     color: var(--text);
   }
   .icon-btn.danger:hover {
-    background: #fee2e2;
-    color: #dc2626;
+    background: var(--danger-bg);
+    color: var(--danger);
   }
   .gear-detail {
     display: flex;
@@ -673,11 +673,11 @@
   }
   .btn-outline:hover { background: var(--hover); }
   .btn-danger {
-    background: #fee2e2;
-    color: #dc2626;
-    border: 0.5px solid #fecaca;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 0.5px solid var(--danger-border);
   }
-  .btn-danger:hover { background: #fecaca; }
+  .btn-danger:hover { background: var(--danger-border); }
   .form {
     display: flex;
     flex-direction: column;
@@ -729,7 +729,7 @@
     color: var(--text);
   }
   .delete-confirm .warning {
-    color: #dc2626;
+    color: var(--danger);
     font-size: var(--font-size-base, 13px);
     font-weight: var(--font-weight-regular, 400);
     margin-bottom: 16px;

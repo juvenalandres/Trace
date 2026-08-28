@@ -198,10 +198,10 @@
     </div>
 
     <div class="stat-grid">
-      <StatCard label="Distance" value={formatKm(activity.stats?.distance_m ?? null)} unit="km" icon="distance" color="#3b82f6" bg="#3b82f620" />
-      <StatCard label="Duration" value={formatDuration(activity.stats?.duration_s ?? null)} icon="duration" color="#14b8a6" bg="#14b8a620" />
-      <StatCard label="Avg Speed" value={formatSpeed(activity.stats?.avg_speed ?? null)} unit="km/h" icon="speed" color="#f97316" bg="#f9731620" />
-      <StatCard label="Elevation" value={activity.stats?.elevation_gain != null ? +activity.stats.elevation_gain.toFixed(1) : '-'} unit="m" icon="elevationUp" color="#f59e0b" bg="#f59e0b20" />
+      <StatCard label="Distance" value={formatKm(activity.stats?.distance_m ?? null)} unit="km" icon="distance" color="var(--primary)" bg="var(--primary-bg)" />
+      <StatCard label="Duration" value={formatDuration(activity.stats?.duration_s ?? null)} icon="duration" color="var(--accent-teal)" bg="color-mix(in srgb, var(--accent-teal) 12%, transparent)" />
+      <StatCard label="Avg Speed" value={formatSpeed(activity.stats?.avg_speed ?? null)} unit="km/h" icon="speed" color="var(--sport-hike)" bg="color-mix(in srgb, var(--sport-hike) 12%, transparent)" />
+      <StatCard label="Elevation" value={activity.stats?.elevation_gain != null ? +activity.stats.elevation_gain.toFixed(1) : '-'} unit="m" icon="elevationUp" color="var(--warning)" bg="var(--warning-bg)" />
     </div>
 
     <div class="other-stats">
@@ -374,11 +374,12 @@
     gap: 6px;
     padding: 8px 14px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     font-family: var(--font-sans);
     font-size: var(--font-size-base, 13px);
     font-weight: var(--font-weight-medium, 500);
     cursor: pointer;
+    transition: all var(--transition-fast);
   }
   .btn-primary {
     background: var(--primary);
@@ -393,11 +394,11 @@
   }
   .btn-outline:hover { background: var(--hover); }
   .btn-danger {
-    background: #fee2e2;
-    color: #dc2626;
-    border: 0.5px solid #fecaca;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid var(--danger-border);
   }
-  .btn-danger:hover { background: #fecaca; }
+  .btn-danger:hover { background: color-mix(in srgb, var(--danger) 15%, transparent); }
   .header { margin-bottom: 24px; }
   .title-row {
     display: flex;
@@ -525,7 +526,7 @@
     color: var(--text);
   }
   .delete-confirm .warning {
-    color: #dc2626;
+    color: var(--danger);
     font-size: var(--font-size-base, 13px);
     font-weight: var(--font-weight-regular, 400);
     margin-bottom: 16px;

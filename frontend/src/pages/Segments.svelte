@@ -37,7 +37,7 @@
 
   function sportColor(sport: string | null): string {
     const colors: Record<string, string> = {
-      run: '#22c55e', ride: '#3b82f6', swim: '#06b6d4', hike: '#f59e0b', walk: '#a855f7', other: '#64748b'
+      run: 'var(--sport-run)', ride: 'var(--sport-ride)', swim: 'var(--sport-swim)', hike: 'var(--sport-hike)', walk: 'var(--sport-walk)', other: 'var(--sport-other)'
     };
     return colors[sport ?? 'other'];
   }
@@ -132,7 +132,7 @@
                     {seg.sport_type}
                   </span>
                 {:else}
-                  <span class="sport-badge" style="background: #64748b20; color: #64748b">Any</span>
+                  <span class="sport-badge" style="background: var(--bg-subtle); color: var(--text-secondary)">Any</span>
                 {/if}
               </td>
               <td>{formatDistance(seg.distance_m)}</td>
