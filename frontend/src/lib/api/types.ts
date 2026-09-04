@@ -740,6 +740,44 @@ export interface FitnessTestChartData {
   fit_start_time: string | null;
 }
 
+export interface Duration {
+  value: number;
+  unit: string;
+}
+
+export interface Distance {
+  value: number;
+  unit: string;
+}
+
+export interface IntensityTarget {
+  type: string;
+  value: number | null;
+  unit: string | null;
+  of: string | null;
+  zone: number | null;
+}
+
+export interface WorkoutStep {
+  type: string;
+  name: string | null;
+  duration: Duration | null;
+  distance: Distance | null;
+  target: IntensityTarget | null;
+  repetitions: number | null;
+  steps: WorkoutStep[] | null;
+  notes: string | null;
+}
+
+export interface WorkoutBlock {
+  name: string | null;
+  steps: WorkoutStep[];
+}
+
+export interface Workout {
+  blocks: WorkoutBlock[];
+}
+
 export const fitnessTestApi = {
   list: (testType?: string) => {
     const params = testType ? `?test_type=${testType}` : '';

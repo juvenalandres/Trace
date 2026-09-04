@@ -51,9 +51,9 @@
     background: var(--card-bg, var(--surface));
     border: var(--card-border, 0.5px solid var(--border));
     border-radius: var(--radius-lg);
-    min-width: auto;
+    width: fit-content;
+    min-width: min(380px, 90vw);
     max-width: 90vw;
-    width: min(400px, 90vw);
     max-height: 90vh;
     overflow: auto;
     box-shadow: var(--shadow-lg);

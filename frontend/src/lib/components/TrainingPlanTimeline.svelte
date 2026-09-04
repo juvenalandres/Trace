@@ -1,6 +1,7 @@
 <script lang="ts">
-  import type { TrainingPlan, TrainingBlock, TrainingSession } from '$lib/api/types';
+  import type { TrainingPlan, TrainingBlock, TrainingSession, Workout } from '$lib/api/types';
   import Modal from './Modal.svelte';
+  import WorkoutView from './WorkoutView.svelte';
 
   let { plan, onSessionClick }: { plan: TrainingPlan; onSessionClick?: (s: TrainingSession) => void } = $props();
 
@@ -192,6 +193,15 @@
   function blockSessionCount(blockId: number): number {
     return plan.sessions.filter(s => s.block_id === blockId).length;
   }
+
+  function parseWorkout(intervals: string | null): { parsed: Workout | null; legacy: string | null } {
+    if (!intervals) return { parsed: null, legacy: null };
+    try {
+      const obj = JSON.parse(intervals);
+      if (obj && obj.blocks) return { parsed: obj as Workout, legacy: null };
+    } catch {}
+    return { parsed: null, legacy: intervals };
+  }
 </script>
 
 <div class="timeline">
@@ -285,11 +295,9 @@
                   <div class="session-desc">{s.description}</div>
                 {/if}
                 {#if !s.rest_day && s.intervals}
-                  {@const items = s.intervals.split(',').map(i => i.trim()).filter(Boolean)}
+                  {@const workout = parseWorkout(s.intervals)}
                   <div class="session-intervals">
-                    {#each items as item}
-                      <span class="session-interval">{item}</span>
-                    {/each}
+                    <WorkoutView parsed={workout.parsed} legacy={workout.legacy} />
                   </div>
                 {/if}
                 <div class="session-footer">
@@ -358,14 +366,10 @@
           </div>
 
           {#if s.intervals}
-            {@const items = s.intervals.split(',').map(i => i.trim()).filter(Boolean)}
+            {@const workout = parseWorkout(s.intervals)}
             <div class="sdb-section">
-              <div class="sdb-section-title">Intervals ({items.length})</div>
-              <ul class="sdb-interval-list">
-                {#each items as item}
-                  <li class="sdb-interval-item">{item}</li>
-                {/each}
-              </ul>
+              <div class="sdb-section-title">Intervals</div>
+              <WorkoutView parsed={workout.parsed} legacy={workout.legacy} />
             </div>
           {/if}
         {/if}
@@ -490,9 +494,7 @@
   }
   .session-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
   .session-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.5; margin-top: 3px; }
-  .session-intervals { display: flex; flex-direction: column; gap: 1px; margin-top: 3px; }
-  .session-interval { font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
-  .session-interval::before { content: '•'; margin-right: 4px; color: var(--text-tertiary, #9ca3af); }
+  .session-intervals { margin-top: 3px; }
 
   .target-pills { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
   .target-pill {
@@ -530,7 +532,7 @@
   }
 
   .sd {
-    min-width: 380px; max-width: 520px; font-family: var(--font-sans);
+    min-width: 400px; max-width: 600px; font-family: var(--font-sans);
   }
 
   .sd-header {
@@ -561,6 +563,7 @@
     border: 0.5px solid var(--border);
     border-radius: 8px; padding: 10px 12px;
     background: var(--bg);
+    overflow: hidden;
   }
   .sdb-section-title {
     font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
@@ -569,14 +572,6 @@
   .sdb-text {
     font-size: 13px; color: var(--text); line-height: 1.5; margin: 0; white-space: pre-wrap;
   }
-  .sdb-interval-list {
-    list-style: none; margin: 0; padding: 0;
-    display: flex; flex-direction: column; gap: 4px;
-  }
-  .sdb-interval-item {
-    font-size: 13px; color: var(--text); line-height: 1.5;
-  }
-  .sdb-interval-item::before { content: '•'; margin-right: 6px; color: var(--text-secondary); }
   .sdb-pills { display: flex; flex-wrap: wrap; gap: 4px; }
   .sdb-pill {
     font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 6px;
