@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { trainingApi } from '$lib/api/types';
-  import type { TrainingPlan, TrainingSession, WeeklyVolumeResponse, WeeklyVolumeWeek } from '$lib/api/types';
+  import type { TrainingPlan, TrainingSession, WeeklyVolumeResponse, WeeklyVolumeWeek, Workout } from '$lib/api/types';
   import Icon from '$lib/components/Icon.svelte';
   import Modal from '$lib/components/Modal.svelte';
+  import WorkoutView from '$lib/components/WorkoutView.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorBanner from '$lib/components/ErrorBanner.svelte';
 
@@ -12,6 +13,15 @@
   }
 
   let { onNavigate }: Props = $props();
+
+  function parseWorkout(intervals: string | null): { parsed: Workout | null; legacy: string | null } {
+    if (!intervals) return { parsed: null, legacy: null };
+    try {
+      const obj = JSON.parse(intervals);
+      if (obj && obj.blocks) return { parsed: obj as Workout, legacy: null };
+    } catch {}
+    return { parsed: null, legacy: intervals };
+  }
 
   let plans = $state<TrainingPlan[]>([]);
   let loading = $state(true);
@@ -551,14 +561,10 @@
               </div>
 
               {#if s.intervals}
-                {@const items = s.intervals.split(',').map(i => i.trim()).filter(Boolean)}
+                {@const workout = parseWorkout(s.intervals)}
                 <div class="sdb-section">
-                  <div class="sdb-section-title">Intervals ({items.length})</div>
-                  <ul class="sdb-interval-list">
-                    {#each items as item}
-                      <li class="sdb-interval-item">{item}</li>
-                    {/each}
-                  </ul>
+                  <div class="sdb-section-title">Intervals</div>
+                  <WorkoutView parsed={workout.parsed} legacy={workout.legacy} />
                 </div>
               {/if}
             {/if}
