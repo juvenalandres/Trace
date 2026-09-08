@@ -116,10 +116,7 @@
     volumeContainer.innerHTML = '';
 
     const data = volumeData.monthly;
-    const xData = data.map(d => {
-      const parts = d.month.split('-');
-      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1).getTime() / 1000;
-    });
+    const xData = data.map((_, i) => i);
     const distData = data.map(d => d.distance_m / 1000);
     const durData = data.map(d => d.duration_s / 3600);
 
@@ -145,8 +142,10 @@
           labelSize: 20,
           labelStroke: '#94a3b8',
           values: (_u, ticks) => ticks.map(t => {
-            const d = new Date(t * 1000);
-            return months[d.getMonth()];
+            const idx = Math.round(t);
+            if (idx < 0 || idx >= data.length) return '';
+            const parts = data[idx].month.split('-');
+            return months[parseInt(parts[1]) - 1];
           }),
         },
         {
