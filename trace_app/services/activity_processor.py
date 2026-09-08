@@ -64,6 +64,9 @@ def compute_stats(points: list[TrackPoint]) -> dict:
                 if speed_ms > 0.5:
                     moving_time += time_diff
 
+        if p_curr.speed is not None:
+            max_speed_ms = max(max_speed_ms, p_curr.speed)
+
     for p in points:
         if p.hr is not None:
             heartrates.append(p.hr)
@@ -222,6 +225,8 @@ def _compute_lap_stats(points: list[TrackPoint], index: int, distance: float) ->
             if dt > 0:
                 seg = haversine_distance(prev.lat, prev.lng, curr.lat, curr.lng)
                 speeds.append(seg / dt)
+        if curr.speed is not None:
+            speeds.append(curr.speed)
 
     for p in points:
         if p.hr is not None:
