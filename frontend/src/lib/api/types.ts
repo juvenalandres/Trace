@@ -477,7 +477,10 @@ export const trainingApi = {
 
   deleteBlock: (blockId: number) => api.del(`/training/blocks/${blockId}`),
 
-  insights: () => api.get<TrainingInsights>('/training/insights'),
+  insights: (days?: number) => {
+    const params = days ? `?days=${days}` : '';
+    return api.get<TrainingInsights>(`/training/insights${params}`);
+  },
 
   ctl: (days: number = 90) => api.get<CtlResponse>(`/training/ctl?days=${days}`),
 

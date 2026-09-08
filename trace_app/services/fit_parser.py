@@ -7,6 +7,8 @@ from trace_app.services.gpx_parser import TrackPoint
 
 SEMICIRCLE_TO_DEG = 180.0 / (2**31)
 
+FIT_SPEED_MAX_MS = 35.0
+
 FIT_SPORT_MAP = {
     "cycling": "ride",
     "running": "run",
@@ -55,8 +57,14 @@ def parse_fit(content: bytes) -> FitResult:
         session.total_elapsed_time = _get_field_value(msg, "total_elapsed_time")
         session.total_distance = _get_field_value(msg, "total_distance")
         session.total_calories = _get_field_value(msg, "total_calories")
-        session.avg_speed = _get_field_value(msg, "enhanced_avg_speed") or _get_field_value(msg, "avg_speed")
-        session.max_speed = _get_field_value(msg, "enhanced_max_speed") or _get_field_value(msg, "max_speed")
+        session.avg_speed = _get_field_value(msg, "enhanced_avg_speed")
+        if session.avg_speed is None:
+            session.avg_speed = _get_field_value(msg, "avg_speed")
+        session.max_speed = _get_field_value(msg, "enhanced_max_speed")
+        if session.max_speed is None:
+            session.max_speed = _get_field_value(msg, "max_speed")
+        if session.max_speed is not None and session.max_speed > FIT_SPEED_MAX_MS:
+            session.max_speed = None
         session.avg_hr = _get_field_value(msg, "avg_heart_rate")
         session.max_hr = _get_field_value(msg, "max_heart_rate")
         break
@@ -78,8 +86,14 @@ def parse_fit(content: bytes) -> FitResult:
         lat = lat_raw * SEMICIRCLE_TO_DEG
         lng = lng_raw * SEMICIRCLE_TO_DEG
 
-        ele = _get_field_value(msg, "enhanced_altitude") or _get_field_value(msg, "altitude")
-        speed = _get_field_value(msg, "enhanced_speed") or _get_field_value(msg, "speed")
+        ele = _get_field_value(msg, "enhanced_altitude")
+        if ele is None:
+            ele = _get_field_value(msg, "altitude")
+        speed = _get_field_value(msg, "enhanced_speed")
+        if speed is None:
+            speed = _get_field_value(msg, "speed")
+        if speed is not None and speed > FIT_SPEED_MAX_MS:
+            speed = None
         hr = _get_field_value(msg, "heart_rate")
         cadence = _get_field_value(msg, "cadence")
         power = _get_field_value(msg, "power")

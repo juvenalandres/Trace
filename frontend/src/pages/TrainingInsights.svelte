@@ -15,6 +15,7 @@
   let prData = $state<PersonalRecordsResponse | null>(null);
   let loading = $state(true);
   let error = $state('');
+  let selectedDays = $state(168);
 
   let volumeContainer: HTMLDivElement;
   let pmcContainer: HTMLDivElement;
@@ -68,8 +69,8 @@
     error = '';
     try {
       const [insightsResult, ctlResult, volumeResult, prResult] = await Promise.all([
-        trainingApi.insights(),
-        trainingApi.ctl(90).catch(() => null),
+        trainingApi.insights(selectedDays),
+        trainingApi.ctl(selectedDays).catch(() => null),
         statsApi.volume().catch(() => null),
         statsApi.personalRecords().catch(() => null),
       ]);
@@ -571,6 +572,13 @@
   {:else if insights}
     <div class="page-header">
       <h1>Training Insights</h1>
+    </div>
+
+    <div class="period-tabs">
+      <button class="period-tab" class:active={selectedDays === 30} onclick={() => { selectedDays = 30; load(); }}>30 days</button>
+      <button class="period-tab" class:active={selectedDays === 90} onclick={() => { selectedDays = 90; load(); }}>90 days</button>
+      <button class="period-tab" class:active={selectedDays === 168} onclick={() => { selectedDays = 168; load(); }}>6 months</button>
+      <button class="period-tab" class:active={selectedDays === 365} onclick={() => { selectedDays = 365; load(); }}>1 year</button>
     </div>
 
     <!-- Section 1: Overview -->
@@ -1178,6 +1186,34 @@
     font-weight: var(--font-weight-regular, 400);
     text-align: center;
     padding: 40px 0;
+  }
+  .period-tabs {
+    display: flex;
+    gap: var(--space-1);
+    background: var(--bg-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-1);
+    margin-bottom: var(--space-5);
+    width: fit-content;
+  }
+  .period-tab {
+    padding: var(--space-2) var(--space-4);
+    border: none;
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--text-secondary);
+    font-size: var(--font-size-base);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+  .period-tab:hover {
+    color: var(--text);
+  }
+  .period-tab.active {
+    background: var(--surface);
+    color: var(--text);
+    font-weight: var(--font-weight-medium);
+    box-shadow: var(--shadow-xs);
   }
   @media (max-width: 768px) {
     .page { padding: 16px; }

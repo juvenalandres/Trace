@@ -1799,12 +1799,13 @@ async def delete_block(
 
 @app.get("/api/training/insights")
 async def training_insights(
+    days: int = Query(168, le=365),
     user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
     today = date.today()
     start_of_week = today - timedelta(days=today.weekday())
-    weeks_back = 24
+    weeks_back = max(1, days // 7)
     start_date = start_of_week - timedelta(weeks=weeks_back - 1)
     start_dt = datetime.datetime.combine(start_date, datetime.time.min).replace(tzinfo=datetime.timezone.utc)
 
