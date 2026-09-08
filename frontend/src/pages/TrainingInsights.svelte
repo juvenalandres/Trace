@@ -116,14 +116,23 @@
     volumeContainer.innerHTML = '';
 
     const data = volumeData.monthly;
-    const xData = data.map((_, i) => i);
+    const xData = data.map(d => {
+      const parts = d.month.split('-');
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1).getTime() / 1000;
+    });
     const distData = data.map(d => d.distance_m / 1000);
     const durData = data.map(d => d.duration_s / 3600);
 
+    // Pad with empty points so first/last bars aren't clipped
+    const step = data.length > 1 ? xData[1] - xData[0] : 2592000;
+    const xPad = [xData[0] - step, ...xData, xData[xData.length - 1] + step];
+    const distPad = [0, ...distData, 0];
+    const durPad = [0, ...durData, 0];
+
     const chartData: uPlot.AlignedData = [
-      new Float64Array(xData),
-      new Float64Array(distData),
-      new Float64Array(durData),
+      new Float64Array(xPad),
+      new Float64Array(distPad),
+      new Float64Array(durPad),
     ];
 
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -131,7 +140,7 @@
     const chart = new uPlot({
       width: volumeContainer.clientWidth,
       height: 250,
-      padding: [10, 10, 30, 50],
+      padding: [10, 20, 30, 50],
       cursor: { points: { show: false } },
       legend: { show: false },
       axes: [
@@ -141,11 +150,11 @@
           label: 'Month',
           labelSize: 20,
           labelStroke: '#94a3b8',
+          // one tick per bar, skip the padding points at start/end
+          splits: xPad.slice(1, -1),
           values: (_u, ticks) => ticks.map(t => {
-            const idx = Math.round(t);
-            if (idx < 0 || idx >= data.length) return '';
-            const parts = data[idx].month.split('-');
-            return months[parseInt(parts[1]) - 1];
+            const d = new Date(t * 1000);
+            return months[d.getMonth()];
           }),
         },
         {
@@ -175,7 +184,7 @@
         },
       ],
       scales: {
-        x: { distr: 2, range: [0.5, -0.5] },
+        x: { time: false },
         y: { range: (u) => [0, (u.series[1].max ?? 10) * 1.1] },
         y2: { range: (u) => [0, (u.series[2].max ?? 1) * 1.1], side: 1 } as uPlot.Scale,
       },
