@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { trainingApi, statsApi } from '$lib/api/types';
   import type { TrainingInsights, CtlResponse, VolumeResponse, PersonalRecordsResponse } from '$lib/api/types';
   import uPlot from 'uplot';
@@ -83,14 +83,15 @@
     } finally {
       loading = false;
     }
-    setTimeout(() => {
+    await tick();
+    requestAnimationFrame(() => {
       destroyCharts();
       buildMonthlyVolumeChart();
       buildPmcChart();
       buildSportDistribution();
       buildWeeklyLoadChart();
       buildAcwrTrendChart();
-    }, 50);
+    });
   }
 
   onMount(load);
@@ -930,6 +931,8 @@
   }
   .chart-container {
     width: 100%;
+    display: flex;
+    justify-content: center;
   }
   .pmc-legend, .volume-legend {
     display: flex;
