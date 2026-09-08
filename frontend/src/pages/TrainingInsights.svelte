@@ -140,13 +140,22 @@
       axes: [
         {
           stroke: '#94a3b8',
+          grid: { show: false },
+          label: 'Month',
+          labelSize: 20,
+          labelStroke: '#94a3b8',
           values: (_u, ticks) => ticks.map(t => {
             const d = new Date(t * 1000);
             return months[d.getMonth()];
           }),
-          grid: { show: false },
         },
-        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
+        {
+          stroke: '#94a3b8',
+          grid: { stroke: '#e2e8f0' },
+          label: 'Distance (km)',
+          labelSize: 20,
+          labelStroke: '#94a3b8',
+        },
       ],
       series: [
         {},
@@ -167,7 +176,7 @@
         },
       ],
       scales: {
-        x: { time: false },
+        x: { distr: 2, range: [0.5, -0.5] },
         y: { range: (u) => [0, (u.series[1].max ?? 10) * 1.1] },
         y2: { range: (u) => [0, (u.series[2].max ?? 1) * 1.1], side: 1 } as uPlot.Scale,
       },
