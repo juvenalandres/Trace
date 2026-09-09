@@ -7,6 +7,7 @@
   import RouteChartPanel from '$lib/components/RouteChartPanel.svelte';
   import HRZones from '$lib/components/HRZones.svelte';
   import PowerZones from '$lib/components/PowerZones.svelte';
+  import SplitTable from '$lib/components/SplitTable.svelte';
   import Modal from '$lib/components/Modal.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -276,6 +277,12 @@
           {/if}
         </div>
       {/if}
+    {/if}
+
+    {#if activity.laps && activity.laps.length > 0}
+      <div class="section">
+        <SplitTable laps={activity.laps} sport_type={activity.sport_type} />
+      </div>
     {/if}
   {/if}
 </div>
