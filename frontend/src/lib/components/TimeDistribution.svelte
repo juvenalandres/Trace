@@ -158,19 +158,21 @@
 
   .td-pie-wrapper {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 24px;
+    gap: 16px;
   }
   .td-pie {
-    width: 120px;
-    height: 120px;
+    width: 160px;
+    height: 160px;
     border-radius: 50%;
     flex-shrink: 0;
   }
   .td-legend {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 14px;
   }
   .td-legend-item {
     display: flex;

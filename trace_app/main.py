@@ -153,12 +153,17 @@ def _week_start_expr(col):
 
 def _weekday_expr(col):
     """Extract day of week as 0=Monday..6=Sunday — works for both SQLite and PostgreSQL."""
-    if is_postgres:
-        # PostgreSQL DOW: 0=Sunday..6=Saturday → shift to 0=Monday..6=Sunday
-        return func.mod(func.extract("dow", col) + 6, 7)
-    # SQLite %w: 0=Sunday..6=Saturday
-    # (6 + strftime('%w', col)) % 7 → Mon=0, Sun=6
-    return func.mod(6 + func.cast(func.strftime("%w", col), Integer), 7)
+    dow = func.extract("dow", col) if is_postgres else func.cast(func.strftime("%w", col), Integer)
+    return case(
+        (dow == 1, 0),  # Mon
+        (dow == 2, 1),  # Tue
+        (dow == 3, 2),  # Wed
+        (dow == 4, 3),  # Thu
+        (dow == 5, 4),  # Fri
+        (dow == 6, 5),  # Sat
+        (dow == 0, 6),  # Sun
+        else_=0,
+    )
 
 
 def _hour_expr(col):

@@ -29,7 +29,6 @@
   let mouseY = 0;
   let error = $state('');
   let resizeObserver: ResizeObserver | null = null;
-  let timeDistGroupBy = $state<'weekday' | 'time_of_day'>('weekday');
   let availableYears = $state<number[]>([]);
 
   const sportColors: Record<string, string> = {
@@ -328,15 +327,9 @@
       </div>
     {/if}
 
-    <div class="section">
-      <div class="section-header">
-        <h2>Activity patterns</h2>
-        <div class="toggle-btns">
-          <button class="toggle-btn" class:active={timeDistGroupBy === 'weekday'} onclick={() => timeDistGroupBy = 'weekday'}>Weekday</button>
-          <button class="toggle-btn" class:active={timeDistGroupBy === 'time_of_day'} onclick={() => timeDistGroupBy = 'time_of_day'}>Time of day</button>
-        </div>
-      </div>
-      <TimeDistribution groupBy={timeDistGroupBy} />
+    <div class="td-row">
+      <TimeDistribution groupBy="weekday" />
+      <TimeDistribution groupBy="time_of_day" />
     </div>
 
     {#if prs}
@@ -569,47 +562,14 @@
     color: var(--primary);
     margin-top: 4px;
   }
-  .section {
+  .td-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
     margin-bottom: 28px;
   }
-  .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-  .section-header h2 {
-    font-size: var(--font-size-lg, 16px);
-    font-weight: var(--font-weight-semibold, 600);
-    margin: 0;
-    color: var(--text);
-  }
-  .toggle-btns {
-    display: flex;
-    gap: 4px;
-    background: var(--bg, #f5f5f5);
-    border-radius: var(--radius-md, 6px);
-    padding: 3px;
-  }
-  .toggle-btn {
-    padding: 4px 10px;
-    border: none;
-    border-radius: 4px;
-    font-family: var(--font-sans);
-    font-size: var(--font-size-xs, 11px);
-    font-weight: var(--font-weight-medium, 500);
-    cursor: pointer;
-    background: transparent;
-    color: var(--text-secondary);
-    transition: all 0.15s ease;
-  }
-  .toggle-btn.active {
-    background: var(--card-bg, white);
-    color: var(--text);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  }
-  .toggle-btn:hover:not(.active) {
-    color: var(--text);
+  @media (max-width: 768px) {
+    .td-row { grid-template-columns: 1fr; }
   }
   @media (max-width: 768px) {
     .page { padding: 16px; }
