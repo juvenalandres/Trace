@@ -130,8 +130,8 @@
     color: var(--primary);
   }
   .pwr-label {
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text);
   }
   .pwr-unit {

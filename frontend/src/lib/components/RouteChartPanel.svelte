@@ -396,8 +396,8 @@
     padding: 14px 16px;
   }
   .charts-title {
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text);
   }
   .metric-actions {

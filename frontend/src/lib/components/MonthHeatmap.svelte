@@ -179,7 +179,7 @@
     margin-bottom: 14px;
   }
   .heatmap-title {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text);
   }

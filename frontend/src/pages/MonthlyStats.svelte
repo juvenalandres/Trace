@@ -450,7 +450,7 @@
     margin-bottom: 14px;
   }
   .card-header h3 {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     margin: 0;
     color: var(--text);

@@ -274,7 +274,7 @@ input, select, textarea {
 }
 
 .card-header h3 {
-  font-size: var(--font-size-base);
+  font-size: 15px;
   font-weight: var(--font-weight-semibold);
   margin: 0;
   color: var(--text);

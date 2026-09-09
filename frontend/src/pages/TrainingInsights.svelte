@@ -957,8 +957,8 @@
     color: var(--text);
   }
   h3 {
-    font-size: var(--font-size-md, 14px);
-    font-weight: var(--font-weight-medium, 500);
+    font-size: 15px;
+    font-weight: 600;
     margin: 0;
     color: var(--text);
   }

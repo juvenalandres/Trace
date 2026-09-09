@@ -191,8 +191,8 @@
     color: var(--primary);
   }
   .split-label {
-    font-size: var(--font-size-base, 13px);
-    font-weight: var(--font-weight-medium, 500);
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text-primary, var(--text));
   }
   .split-unit {
@@ -310,7 +310,7 @@
     flex: 1;
     height: 6px;
     border-radius: 3px;
-    background: var(--bg, #f0f0f0);
+    background: var(--bg);
     overflow: hidden;
   }
   .split-bar {
