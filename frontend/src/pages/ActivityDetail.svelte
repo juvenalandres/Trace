@@ -200,15 +200,24 @@
     <div class="stat-grid">
       <StatCard label="Distance" value={formatKm(activity.stats?.distance_m ?? null)} unit="km" icon="distance" color="var(--primary)" bg="var(--primary-bg)" />
       <StatCard label="Duration" value={formatDuration(activity.stats?.duration_s ?? null)} icon="duration" color="var(--accent-teal)" bg="color-mix(in srgb, var(--accent-teal) 12%, transparent)" />
-      <StatCard label="Avg Speed" value={formatSpeed(activity.stats?.avg_speed ?? null)} unit="km/h" icon="speed" color="var(--sport-hike)" bg="color-mix(in srgb, var(--sport-hike) 12%, transparent)" />
+      <StatCard
+        label={activity.sport_type === 'run' ? 'Avg Pace' : 'Avg Speed'}
+        value={activity.sport_type === 'run' ? formatPace(activity.stats?.avg_speed ?? null) : formatSpeed(activity.stats?.avg_speed ?? null)}
+        unit={activity.sport_type === 'run' ? 'min/km' : 'km/h'}
+        icon="speed" color="var(--sport-hike)" bg="color-mix(in srgb, var(--sport-hike) 12%, transparent)" />
       <StatCard label="Elevation" value={activity.stats?.elevation_gain != null ? +activity.stats.elevation_gain.toFixed(1) : '-'} unit="m" icon="elevationUp" color="var(--warning)" bg="var(--warning-bg)" />
     </div>
 
     <div class="other-stats">
       <div class="stats-grid">
-        <StatRow label="Max Speed" value={formatSpeed(activity.stats?.max_speed ?? null)} unit="km/h" />
+        <StatRow
+          label={activity.sport_type === 'run' ? 'Max Pace' : 'Max Speed'}
+          value={activity.sport_type === 'run' ? formatPace(activity.stats?.max_speed ?? null) : formatSpeed(activity.stats?.max_speed ?? null)}
+          unit={activity.sport_type === 'run' ? 'min/km' : 'km/h'} />
         <StatRow label="Avg HR" value={activity.stats?.avg_hr ?? '-'} unit="bpm" />
-        <StatRow label="Avg Power" value={activity.stats?.avg_power ?? '-'} unit="W" />
+        {#if activity.sport_type === 'ride'}
+          <StatRow label="Avg Power" value={activity.stats?.avg_power ?? '-'} unit="W" />
+        {/if}
         <StatRow label="Avg Cadence" value={activity.stats?.avg_cadence ?? '-'} unit="spm" />
         <StatRow label="Calories" value={activity.stats?.calories ?? '-'} unit="kcal" />
         <StatRow label="Device" value={activity.source} />
