@@ -179,6 +179,16 @@ export interface SportBreakdown {
   activity_count: number;
 }
 
+export interface TimeDistributionItem {
+  group: string;
+  group_index: number;
+  count: number;
+  distance_m: number;
+  duration_s: number;
+  elevation_gain: number;
+  avg_speed: number | null;
+}
+
 export interface DashboardResponse {
   week: PeriodStats;
   prev_week: PeriodStats;
@@ -317,6 +327,13 @@ export const statsApi = {
   },
 
   availableYears: () => api.get<number[]>('/stats/available-years'),
+
+  timeDistribution: (groupBy: 'weekday' | 'time_of_day', startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ group_by: groupBy });
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
+    return api.get<TimeDistributionItem[]>(`/stats/time-distribution?${params}`);
+  },
 };
 
 export const userApi = {

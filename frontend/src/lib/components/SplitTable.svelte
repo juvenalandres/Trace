@@ -190,11 +190,12 @@
     justify-content: center;
     color: var(--primary);
   }
-  .split-label {
+  .split-title .split-label {
     font-size: 15px;
     font-weight: 600;
     color: var(--text-primary, var(--text));
   }
+
   .split-unit {
     font-size: var(--font-size-xs, 10px);
     font-weight: var(--font-weight-semibold, 600);

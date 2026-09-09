@@ -15,7 +15,7 @@ from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Uploa
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import Date, func, literal_column, select, update
+from sqlalchemy import Date, Integer, case, func, literal_column, select, update
 from sqlalchemy.orm import selectinload
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -149,6 +149,24 @@ def _week_start_expr(col):
         return func.date_trunc("week", col)
     # SQLite: weekday 1 = Monday, '-7 days' backs up to the Monday of the current week
     return func.date(col, "weekday 1", "-7 days")
+
+
+def _weekday_expr(col):
+    """Extract day of week as 0=Monday..6=Sunday — works for both SQLite and PostgreSQL."""
+    if is_postgres:
+        # PostgreSQL DOW: 0=Sunday..6=Saturday → shift to 0=Monday..6=Sunday
+        return func.mod(func.extract("dow", col) + 6, 7)
+    # SQLite %w: 0=Sunday..6=Saturday
+    # (6 + strftime('%w', col)) % 7 → Mon=0, Sun=6
+    return func.mod(6 + func.cast(func.strftime("%w", col), Integer), 7)
+
+
+def _hour_expr(col):
+    """Extract hour of day (0-23) from a datetime column — works for both SQLite and PostgreSQL."""
+    if is_postgres:
+        return func.extract("hour", col)
+    return func.cast(func.strftime("%H", col), Integer)
+
 
 # CORS
 cors_origins = [o.strip() for o in settings.cors_origins.split(",")]
@@ -1304,6 +1322,101 @@ async def heatmap(
         }
         for r in rows
     ]
+    cache.set(cache_key, result)
+    return result
+
+
+WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+@app.get("/api/stats/time-distribution")
+async def time_distribution(
+    group_by: str = "weekday",
+    start_date: str | None = None,
+    end_date: str | None = None,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Return activity counts and aggregate metrics grouped by weekday or time of day."""
+    if group_by not in ("weekday", "time_of_day"):
+        raise HTTPException(status_code=400, detail="group_by must be 'weekday' or 'time_of_day'")
+
+    cache = get_stats_cache()
+    cache_key = f"{user.id}:time-dist:{group_by}:{start_date or ''}:{end_date or ''}"
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+
+    today = datetime.date.today()
+    end = datetime.date.fromisoformat(end_date) if end_date else today
+    start = datetime.date.fromisoformat(start_date) if start_date else end - datetime.timedelta(days=364)
+
+    start_dt = datetime.datetime.combine(start, datetime.time.min, tzinfo=datetime.timezone.utc)
+    end_dt = datetime.datetime.combine(end + datetime.timedelta(days=1), datetime.time.min, tzinfo=datetime.timezone.utc)
+
+    if group_by == "weekday":
+        group_expr = _weekday_expr(Activity.start_time)
+        group_col = "weekday"
+    else:
+        # Bucket into morning/afternoon/evening/night by hour
+        hour = _hour_expr(Activity.start_time)
+        # 5-11=0 morning, 12-16=1 afternoon, 17-21=2 evening, 22-4=3 night
+        group_expr = case(
+            (hour.between(5, 11), 0),
+            (hour.between(12, 16), 1),
+            (hour.between(17, 21), 2),
+            else_=3,
+        )
+        group_col = "time_of_day"
+
+    q = (
+        select(
+            group_expr.label(group_col),
+            func.count(Activity.id).label("count"),
+            func.coalesce(func.sum(ActivityStats.distance_m), 0).label("distance_m"),
+            func.coalesce(func.sum(ActivityStats.duration_s), 0).label("duration_s"),
+            func.coalesce(func.sum(ActivityStats.elevation_gain), 0).label("elevation_gain"),
+            func.avg(ActivityStats.avg_speed).label("avg_speed"),
+        )
+        .join(ActivityStats, ActivityStats.activity_id == Activity.id)
+        .where(
+            Activity.user_id == user.id,
+            Activity.start_time >= start_dt,
+            Activity.start_time < end_dt,
+        )
+        .group_by(group_col)
+        .order_by(group_col)
+    )
+    rows = (await db.execute(q)).all()
+
+    if group_by == "weekday":
+        result = [
+            {
+                "group": WEEKDAY_LABELS[r[0]],
+                "group_index": r[0],
+                "count": r[1],
+                "distance_m": r[2],
+                "duration_s": r[3],
+                "elevation_gain": r[4],
+                "avg_speed": round(r[5], 2) if r[5] else None,
+            }
+            for r in rows
+        ]
+    else:
+        time_labels = ["Morning", "Afternoon", "Evening", "Night"]
+        result = [
+            {
+                "group": time_labels[r[0]],
+                "group_index": r[0],
+                "count": r[1],
+                "distance_m": r[2],
+                "duration_s": r[3],
+                "elevation_gain": r[4],
+                "avg_speed": round(r[5], 2) if r[5] else None,
+            }
+            for r in rows
+        ]
+
     cache.set(cache_key, result)
     return result
 
