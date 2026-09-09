@@ -146,8 +146,7 @@ def _date_expr(col):
 def _week_start_expr(col):
     """Return the Monday of the week for a datetime column — works for both SQLite and PostgreSQL."""
     if is_postgres:
-        # PostgreSQL date_trunc('week') returns Sunday, so shift to Monday
-        return func.date_trunc("week", col + literal_column("INTERVAL '1 day'")) - literal_column("INTERVAL '1 day'")
+        return func.date_trunc("week", col)
     # SQLite: weekday 1 = Monday, '-7 days' backs up to the Monday of the current week
     return func.date(col, "weekday 1", "-7 days")
 
@@ -1856,7 +1855,7 @@ async def training_insights(
 
     # Fill from SQL aggregation
     for row in week_rows:
-        key = str(row.week_start) if isinstance(row.week_start, date) else row.week_start
+        key = row.week_start.date().isoformat() if hasattr(row.week_start, 'date') else row.week_start if isinstance(row.week_start, str) else str(row.week_start)
         if key in weekly:
             weekly[key]["distance_m"] = round(row.distance_m or 0, 1)
             weekly[key]["duration_s"] = round(row.duration_s or 0, 1)
@@ -1866,7 +1865,7 @@ async def training_insights(
     # Build pace trends from SQL aggregation
     pace_data: dict[str, dict[str, float]] = {}
     for row in pace_rows:
-        key = str(row.week_start) if isinstance(row.week_start, date) else row.week_start
+        key = row.week_start.date().isoformat() if hasattr(row.week_start, 'date') else row.week_start if isinstance(row.week_start, str) else str(row.week_start)
         sport = row.sport_type or "other"
         if sport not in pace_data:
             pace_data[sport] = {}
