@@ -141,7 +141,7 @@
     const chart = new uPlot({
       width: volumeContainer.clientWidth,
       height: 250,
-      padding: [10, 20, 30, 50],
+      padding: [10, 0, 0, 0],
       cursor: { points: { show: false } },
       legend: { show: false },
       axes: [
@@ -223,19 +223,24 @@
     const chart = new uPlot({
       width: pmcContainer.clientWidth,
       height: 300,
-      padding: [10, 10, 30, 50],
+      padding: [10, 0, 0, 0],
       cursor: { points: { show: false } },
       legend: { show: false },
       axes: [
         {
           stroke: '#94a3b8',
+          gap: 4,
           values: (_u, ticks) => ticks.map(t => {
             const d = new Date(t * 1000);
             return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
           }),
           grid: { show: false },
         },
-        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
+        {
+          stroke: '#94a3b8',
+          gap: 4,
+          grid: { stroke: '#e2e8f0' },
+        },
       ],
       series: [
         {},
@@ -336,19 +341,24 @@
     const chart = new uPlot({
       width: weeklyLoadContainer.clientWidth,
       height: 200,
-      padding: [10, 10, 30, 50],
+      padding: [10, 0, 0, 0],
       cursor: { points: { show: false } },
       legend: { show: false },
       axes: [
         {
           stroke: '#94a3b8',
+          gap: 4,
           values: (_u, ticks) => ticks.map(t => {
             const d = new Date(t * 1000);
             return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
           }),
           grid: { show: false },
         },
-        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
+        {
+          stroke: '#94a3b8',
+          gap: 4,
+          grid: { stroke: '#e2e8f0' },
+        },
       ],
       series: [
         {},
@@ -411,19 +421,24 @@
     const chart = new uPlot({
       width: acwrTrendContainer.clientWidth,
       height: 200,
-      padding: [10, 10, 30, 50],
+      padding: [10, 0, 0, 0],
       cursor: { points: { show: false } },
       legend: { show: false },
       axes: [
         {
           stroke: '#94a3b8',
+          gap: 4,
           values: (_u, ticks) => ticks.map(t => {
             const d = new Date(t * 1000);
             return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
           }),
           grid: { show: false },
         },
-        { stroke: '#94a3b8', grid: { stroke: '#e2e8f0' } },
+        {
+          stroke: '#94a3b8',
+          gap: 4,
+          grid: { stroke: '#e2e8f0' },
+        },
       ],
       series: [
         {},
@@ -931,8 +946,6 @@
   }
   .chart-container {
     width: 100%;
-    display: flex;
-    justify-content: center;
   }
   .pmc-legend, .volume-legend {
     display: flex;
