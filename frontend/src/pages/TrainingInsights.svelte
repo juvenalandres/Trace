@@ -147,10 +147,8 @@
       axes: [
         {
           stroke: '#94a3b8',
+          gap: 4,
           grid: { show: false },
-          label: 'Month',
-          labelSize: 20,
-          labelStroke: '#94a3b8',
           // one tick per bar, skip the padding points at start/end
           splits: xPad.slice(1, -1),
           values: (_u, ticks) => ticks.map(t => {
@@ -160,10 +158,8 @@
         },
         {
           stroke: '#94a3b8',
+          gap: 4,
           grid: { stroke: '#e2e8f0' },
-          label: 'Distance (km)',
-          labelSize: 20,
-          labelStroke: '#94a3b8',
         },
       ],
       series: [
