@@ -19,17 +19,22 @@
 
   let volumeContainer: HTMLDivElement;
   let pmcContainer: HTMLDivElement;
+  let trimpContainer: HTMLDivElement;
   let sportLoadContainer: HTMLDivElement;
   let weeklyLoadContainer: HTMLDivElement;
   let acwrTrendContainer: HTMLDivElement;
   let volumeTooltip: HTMLDivElement;
   let weeklyLoadTooltip: HTMLDivElement;
   let pmcTooltip: HTMLDivElement;
+  let trimpTooltip: HTMLDivElement;
   let chartTooltip: HTMLDivElement;
   let mouseX = 0;
   let mouseY = 0;
 
   let charts: uPlot[] = [];
+  let pmcChart: uPlot | null = null;
+  let trimpChart: uPlot | null = null;
+  let syncing = false;
 
   const sportColors: Record<string, string> = {
     run: 'var(--sport-run)',
@@ -88,6 +93,7 @@
       destroyCharts();
       buildMonthlyVolumeChart();
       buildPmcChart();
+      buildTrimpChart();
       buildSportDistribution();
       buildWeeklyLoadChart();
       buildAcwrTrendChart();
@@ -99,6 +105,8 @@
   function destroyCharts() {
     charts.forEach(c => c.destroy());
     charts = [];
+    pmcChart = null;
+    trimpChart = null;
   }
 
   function formatKm(m: number): string {
@@ -266,16 +274,96 @@
       },
       hooks: {
         setCursor: [(u: uPlot) => {
-          if (u.cursor.idx != null) showTooltip(u.cursor.idx, u, 'pmc');
+          if (syncing) return;
+          if (u.cursor.idx != null) {
+            syncing = true;
+            showTooltip(u.cursor.idx, u, 'pmc');
+            if (trimpChart) trimpChart.setCursor({ idx: u.cursor.idx });
+            syncing = false;
+          }
         }],
       },
     }, chartData, pmcContainer);
     charts.push(chart);
+    pmcChart = chart;
 
     const ro = new ResizeObserver(() => {
       if (pmcContainer) chart.setSize({ width: pmcContainer.clientWidth, height: 300 });
     });
     ro.observe(pmcContainer);
+  }
+
+  function buildTrimpChart() {
+    if (!trimpContainer || !ctlData || ctlData.data.length === 0) return;
+    trimpContainer.innerHTML = '';
+
+    const data = ctlData.data;
+    const xData = data.map(d => {
+      const parts = d.date.split('-');
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime() / 1000;
+    });
+
+    const chartData: uPlot.AlignedData = [
+      new Float64Array(xData),
+      new Float64Array(data.map(d => d.training_load)),
+    ];
+
+    const chart = new uPlot({
+      width: trimpContainer.clientWidth,
+      height: 150,
+      padding: [10, 0, 0, 0],
+      cursor: { points: { show: false } },
+      legend: { show: false },
+      axes: [
+        {
+          stroke: '#94a3b8',
+          gap: 4,
+          values: (_u, ticks) => ticks.map(t => {
+            const d = new Date(t * 1000);
+            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+          }),
+          grid: { show: false },
+        },
+        {
+          stroke: '#94a3b8',
+          gap: 4,
+          grid: { stroke: '#e2e8f0' },
+        },
+      ],
+      series: [
+        {},
+        {
+          label: 'TRIMP',
+          stroke: '#f97316',
+          fill: 'rgba(249,115,22,0.5)',
+          width: 1,
+          points: { show: false },
+          paths: (uPlot.paths.bars as NonNullable<typeof uPlot.paths.bars>)({ size: [0.8, 100] }),
+        },
+      ],
+      scales: {
+        x: { time: false },
+        y: { range: (u) => [0, (u.series[1].max ?? 10) * 1.1] },
+      },
+      hooks: {
+        setCursor: [(u: uPlot) => {
+          if (syncing) return;
+          if (u.cursor.idx != null) {
+            syncing = true;
+            showTooltip(u.cursor.idx, u, 'trimp');
+            if (pmcChart) pmcChart.setCursor({ idx: u.cursor.idx });
+            syncing = false;
+          }
+        }],
+      },
+    }, chartData, trimpContainer);
+    charts.push(chart);
+    trimpChart = chart;
+
+    const ro = new ResizeObserver(() => {
+      if (trimpContainer) chart.setSize({ width: trimpContainer.clientWidth, height: 150 });
+    });
+    ro.observe(trimpContainer);
   }
 
   function buildSportDistribution() {
@@ -469,13 +557,13 @@
     ro.observe(acwrTrendContainer);
   }
 
-  function showTooltip(idx: number, activeChart: uPlot, type: 'pmc' | 'acwr' | 'volume' | 'weeklyLoad') {
-    const tooltip = type === 'pmc' ? pmcTooltip : type === 'acwr' ? chartTooltip : type === 'volume' ? volumeTooltip : weeklyLoadTooltip;
+  function showTooltip(idx: number, activeChart: uPlot, type: 'pmc' | 'acwr' | 'volume' | 'weeklyLoad' | 'trimp') {
+    const tooltip = (type === 'pmc' || type === 'trimp') ? pmcTooltip : type === 'acwr' ? chartTooltip : type === 'volume' ? volumeTooltip : weeklyLoadTooltip;
     if (!tooltip) return;
 
     let html = '';
     
-    if (type === 'pmc' && ctlData && idx < ctlData.data.length) {
+    if ((type === 'pmc' || type === 'trimp') && ctlData && idx < ctlData.data.length) {
       const point = ctlData.data[idx];
       const dateParts = point.date.split('-');
       const dateStr = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
@@ -485,7 +573,7 @@
       html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-1)"></span>CTL (Fitness): ${point.ctl.toFixed(1)}</div>`;
       html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-2)"></span>ATL (Fatigue): ${point.atl.toFixed(1)}</div>`;
       html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-3)"></span>TSB (Form): ${point.tsb.toFixed(1)}</div>`;
-      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:var(--chart-6)"></span>Load: ${point.training_load.toFixed(1)}</div>`;
+      html += `<div class="tooltip-row"><span class="tooltip-dot" style="background:#f97316"></span>TRIMP: ${point.training_load.toFixed(0)}</div>`;
       html += '</div>';
     } else if (type === 'acwr' && ctlData && ctlData.data.length >= 14) {
       const data = ctlData.data;
@@ -669,6 +757,19 @@
             onmousemove={handleMouseMove}
           ></div>
           <div bind:this={pmcTooltip} class="chart-tooltip" style="display: none;"></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>Daily TRIMP</h3>
+          </div>
+          <div
+            class="chart-container"
+            bind:this={trimpContainer}
+            onmouseleave={() => hideTooltip(pmcTooltip)}
+            onmousemove={handleMouseMove}
+          ></div>
+          <div bind:this={trimpTooltip} class="chart-tooltip" style="display: none;"></div>
         </div>
 
         <div class="chart-row">
