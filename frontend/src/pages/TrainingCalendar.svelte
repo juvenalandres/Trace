@@ -609,7 +609,7 @@
 
 <style>
   .page {
-    max-width: 1200px;
+    width: 100%;
   }
   .calendar-header {
     display: flex;

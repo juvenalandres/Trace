@@ -781,7 +781,7 @@
 
 <style>
   .page {
-    max-width: 1200px;
+    width: 100%;
     margin: 0 auto;
   }
   .page-header {
@@ -1162,8 +1162,7 @@
   .icon-btn.danger:hover { background: var(--danger-bg); color: var(--danger); }
 
   .session-form-page {
-    max-width: 900px;
-    margin: 0 auto;
+    width: 100%;
   }
   .session-form-page .page-header {
     display: flex;

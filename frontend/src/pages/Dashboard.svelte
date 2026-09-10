@@ -370,7 +370,7 @@
 
 <style>
   .dashboard {
-    max-width: 900px;
+    width: 100%;
     margin: 0 auto;
     padding: var(--space-6);
   }

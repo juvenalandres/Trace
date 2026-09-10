@@ -357,7 +357,7 @@
 
 <style>
   .page {
-    max-width: 900px;
+    width: 100%;
     margin: 0 auto;
     padding: 24px;
     font-family: var(--font-sans);

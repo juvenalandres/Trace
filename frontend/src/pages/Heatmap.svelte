@@ -187,7 +187,7 @@
 
 <style>
   .page {
-    max-width: 1200px;
+    width: 100%;
   }
   .page-header {
     display: flex;

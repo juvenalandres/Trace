@@ -8,7 +8,7 @@
 
 <style>
   .page {
-    max-width: 1200px;
+    width: 100%;
   }
   h1 {
     font-size: 28px;
