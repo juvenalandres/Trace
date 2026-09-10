@@ -128,6 +128,9 @@
     return Array.from(byYear.values()).sort((a, b) => b.year - a.year);
   });
 
+  const years = $derived(yearlyData.map(y => y.year).sort((a, b) => a - b));
+  const seriesColors = $derived(years.map((_, i) => YEAR_COLORS[i % YEAR_COLORS.length]));
+
   function buildChart() {
     if (!chartContainer || yearlyData.length === 0) return;
 
@@ -135,7 +138,6 @@
     chart = null;
 
     const cfg = metricConfig[chartMetric];
-    const years = yearlyData.map(y => y.year).sort((a, b) => a - b);
     const currentMonth = new Date().getMonth() + 1;
 
     const xVals = new Float64Array(MONTH_LABELS.map((_, i) => i));
@@ -158,8 +160,6 @@
     });
 
     const plotData: uPlot.AlignedData = [xVals, ...seriesData];
-
-    const seriesColors = years.map((_, i) => YEAR_COLORS[i % YEAR_COLORS.length]);
 
     chart = new uPlot({
       width: chartContainer.clientWidth,
@@ -197,10 +197,7 @@
           label: String(year),
         })),
       ],
-      legend: {
-        show: true,
-        live: false,
-      },
+      legend: { show: false },
       hooks: {
         setCursor: [
           (u: uPlot) => {
@@ -322,6 +319,19 @@
             </button>
           </div>
         </div>
+        {#if years.length > 0}
+          <div class="chart-legend">
+            {#each years as year, i}
+              <span class="chart-legend-item">
+                <svg width="20" height="10" viewBox="0 0 20 10">
+                  <line x1="0" y1="5" x2="20" y2="5" stroke={seriesColors[i]} stroke-width="2" />
+                  <circle cx="10" cy="5" r="4" fill="#fff" stroke={seriesColors[i]} stroke-width="1.5" />
+                </svg>
+                <span class="chart-legend-label">{year}</span>
+              </span>
+            {/each}
+          </div>
+        {/if}
         <div bind:this={chartContainer} class="chart" role="presentation" onmousemove={handleChartMouseMove} onmouseleave={handleChartMouseLeave}></div>
         <div bind:this={tooltipEl} class="chart-tooltip" style="display: none;"></div>
 
@@ -490,6 +500,23 @@
     color: var(--text);
   }
 
+  .chart-legend {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .chart-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .chart-legend-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
   .chart {
     margin-bottom: 8px;
     width: 100%;

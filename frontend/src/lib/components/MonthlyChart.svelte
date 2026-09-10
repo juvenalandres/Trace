@@ -43,6 +43,7 @@
   });
 
   const seriesColors = $derived(yearlyData.map((_, i) => YEAR_COLORS[i % YEAR_COLORS.length]));
+  const years = $derived(yearlyData.map(y => y.year));
 
   async function loadData() {
     loading = true;
@@ -62,7 +63,6 @@
     chart = null;
 
     const cfg = metricConfig[metric];
-    const years = yearlyData.map(y => y.year);
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
 
@@ -125,10 +125,7 @@
           label: String(year),
         })),
       ],
-      legend: {
-        show: true,
-        live: false,
-      },
+      legend: { show: false },
       hooks: {
         setCursor: [
           (u: uPlot) => {
@@ -218,6 +215,19 @@
         </button>
       </div>
     </div>
+    {#if years.length > 0}
+      <div class="mc-legend">
+        {#each years as year, i}
+          <span class="mc-legend-item">
+            <svg width="20" height="10" viewBox="0 0 20 10">
+              <line x1="0" y1="5" x2="20" y2="5" stroke={seriesColors[i]} stroke-width="2" />
+              <circle cx="10" cy="5" r="4" fill="#fff" stroke={seriesColors[i]} stroke-width="1.5" />
+            </svg>
+            <span class="mc-legend-label">{year}</span>
+          </span>
+        {/each}
+      </div>
+    {/if}
     <div class="mc-chart-wrap">
       <div bind:this={chartContainer} class="mc-chart" role="presentation" onmousemove={handleMouseMove} onmouseleave={handleMouseLeave}></div>
       <div bind:this={tooltipEl} class="mc-tooltip" style="display: none;"></div>
@@ -286,6 +296,25 @@
 
   .mc-chart-wrap {
     position: relative;
+  }
+
+  .mc-legend {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .mc-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .mc-legend-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary, #666);
   }
 
   .mc-chart {
