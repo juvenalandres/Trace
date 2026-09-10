@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { trainingApi, statsApi } from '$lib/api/types';
-  import type { TrainingInsights, CtlResponse, VolumeResponse, PersonalRecordsResponse } from '$lib/api/types';
+  import type { TrainingInsights, CtlResponse, VolumeResponse, PersonalRecordsResponse, PolarisedTrainingResponse } from '$lib/api/types';
   import uPlot from 'uplot';
   import 'uplot/dist/uPlot.min.css';
   import Icon from '$lib/components/Icon.svelte';
@@ -13,6 +13,7 @@
   let ctlData = $state<CtlResponse | null>(null);
   let volumeData = $state<VolumeResponse | null>(null);
   let prData = $state<PersonalRecordsResponse | null>(null);
+  let polarisedData = $state<PolarisedTrainingResponse | null>(null);
   let loading = $state(true);
   let error = $state('');
   let selectedDays = $state(168);
@@ -73,16 +74,18 @@
     loading = true;
     error = '';
     try {
-      const [insightsResult, ctlResult, volumeResult, prResult] = await Promise.all([
+      const [insightsResult, ctlResult, volumeResult, prResult, polarisedResult] = await Promise.all([
         trainingApi.insights(selectedDays),
         trainingApi.ctl(selectedDays).catch(() => null),
         statsApi.volume().catch(() => null),
         statsApi.personalRecords().catch(() => null),
+        statsApi.polarisedTraining(30).catch(() => null),
       ]);
       insights = insightsResult;
       ctlData = ctlResult;
       volumeData = volumeResult;
       prData = prResult;
+      polarisedData = polarisedResult;
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to load insights';
     } finally {
@@ -671,6 +674,28 @@
   let currentCtl = $derived(ctlData && ctlData.data.length > 0 ? ctlData.data[ctlData.data.length - 1].ctl : null);
   let currentAtl = $derived(ctlData && ctlData.data.length > 0 ? ctlData.data[ctlData.data.length - 1].atl : null);
   let currentTsb = $derived(ctlData && ctlData.data.length > 0 ? ctlData.data[ctlData.data.length - 1].tsb : null);
+
+  let last7DaysLoad = $derived.by(() => {
+    if (!ctlData || ctlData.data.length === 0) return [];
+    return ctlData.data.slice(-7).map(d => d.training_load);
+  });
+
+  let weeklyTrimp = $derived(last7DaysLoad.reduce((s, v) => s + v, 0));
+
+  let restDays = $derived(last7DaysLoad.filter(v => v === 0).length);
+
+  let monotony = $derived.by(() => {
+    const loads = last7DaysLoad;
+    if (loads.length < 2) return 0;
+    const mean = loads.reduce((s, v) => s + v, 0) / loads.length;
+    const variance = loads.reduce((s, v) => s + (v - mean) ** 2, 0) / (loads.length - 1);
+    const stddev = Math.sqrt(variance);
+    return stddev > 0 ? mean / stddev : mean > 0 ? mean : 0;
+  });
+
+  let weeklyStrain = $derived(monotony * weeklyTrimp);
+
+  let acwrValue = $derived(ctlData?.acwr?.value ?? 0);
   let tsbStatus = $derived.by(() => {
     if (currentTsb === null) return null;
     if (currentTsb >= 15) return { label: 'Peak Form', color: 'var(--success)' };
@@ -698,41 +723,110 @@
       <button class="period-tab" class:active={selectedDays === 365} onclick={() => { selectedDays = 365; load(); }}>1 year</button>
     </div>
 
-    <!-- Section 1: Overview -->
+    <!-- Section 1: Training Load Analysis -->
     <div class="section">
-      <h2 class="section-title">Overview</h2>
-      <div class="stat-grid">
-        <StatCard label="Streak" value={insights.consistency_streak} unit="weeks" icon="milestones" />
-        <StatCard label="Avg Weekly" value={avgWeeklyKm.toFixed(1)} unit="km" icon="distance" color="var(--chart-1)" bg="var(--chart-1)" />
-        <StatCard label="Total Distance" value={formatKm(totalDistance)} unit="km" icon="distance" color="var(--chart-1)" bg="var(--chart-1)" />
-        <StatCard label="Total Duration" value={formatDuration(totalDuration)} icon="duration" color="var(--chart-5)" bg="var(--chart-5)" />
+      <div class="section-header">
+        <h2 class="section-title">Training Load Analysis</h2>
+        <button class="view-details-link" onclick={() => {}}>View details</button>
       </div>
+
       {#if currentCtl !== null}
-        <div class="metric-row">
-          <div class="metric-card">
-            <div class="metric-label">CTL (Fitness)</div>
-            <div class="metric-value" style="color: var(--chart-1)">{currentCtl.toFixed(1)}</div>
-            <div class="metric-desc">42-day rolling average</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-label">ATL (Fatigue)</div>
-            <div class="metric-value" style="color: var(--chart-2)">{currentAtl?.toFixed(1)}</div>
-            <div class="metric-desc">7-day rolling average</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-label">TSB (Form)</div>
-            <div class="metric-value" style="color: {tsbStatus?.color ?? 'var(--text-secondary)'}">{currentTsb?.toFixed(1)}</div>
-            {#if tsbStatus}
-              <div class="metric-badge" style="background: {tsbStatus.color}20; color: {tsbStatus.color}">{tsbStatus.label}</div>
-            {/if}
-          </div>
-          {#if ctlData?.acwr}
-            <div class="metric-card">
-              <div class="metric-label">ACWR</div>
-              <div class="metric-value" style="color: {ctlData.acwr.color}">{ctlData.acwr.value}</div>
-              <div class="metric-badge" style="background: {ctlData.acwr.color}20; color: {ctlData.acwr.color}">{ctlData.acwr.status}</div>
+        <div class="tlk-grid">
+          <div class="tlk-card">
+            <div class="tlk-header">
+              <span class="tlk-label">CTL (Fitness)</span>
+              <span class="tlk-info" title="42-day fitness trend">?</span>
             </div>
-          {/if}
+            <div class="tlk-value">{currentCtl.toFixed(1)}</div>
+            <div class="tlk-desc">42-day fitness trend</div>
+          </div>
+          <div class="tlk-card">
+            <div class="tlk-header">
+              <span class="tlk-label">ATL (Fatigue)</span>
+              <span class="tlk-info" title="7-day fatigue level">?</span>
+            </div>
+            <div class="tlk-value">{currentAtl?.toFixed(1)}</div>
+            <div class="tlk-desc">7-day fatigue level</div>
+          </div>
+          <div class="tlk-card">
+            <div class="tlk-header">
+              <span class="tlk-label">TSB (Form)</span>
+              <span class="tlk-info" title={tsbStatus?.label ?? 'Form metric'}>?</span>
+            </div>
+            <div class="tlk-value" style="color: {tsbStatus?.color ?? 'var(--text)'}">{currentTsb?.toFixed(1)}</div>
+            <div class="tlk-desc">{tsbStatus?.label ?? ''}</div>
+          </div>
+          <div class="tlk-card">
+            <div class="tlk-header">
+              <span class="tlk-label">A:C Ratio</span>
+              <span class="tlk-info" title={ctlData?.acwr?.guidance ?? 'Acute:Chronic workload ratio'}>?</span>
+            </div>
+            <div class="tlk-value" style="color: {ctlData?.acwr?.color ?? 'var(--text)'}">{ctlData?.acwr?.value?.toFixed(2) ?? '—'}</div>
+            <div class="tlk-desc">{ctlData?.acwr?.status ?? ''}</div>
+          </div>
+        </div>
+
+        <div class="tlk-grid">
+          <div class="tlk-card">
+            <div class="tlk-header">
+              <span class="tlk-label">Rest Days</span>
+              <span class="tlk-info" title="Rest days in last 7 days">?</span>
+            </div>
+            <div class="tlk-value">{restDays} / 7</div>
+            <div class="tlk-desc">Rest days in last 7 days</div>
+          </div>
+          <div class="tlk-card">
+            <div class="tlk-header">
+              <span class="tlk-label">Monotony</span>
+              <span class="tlk-info" title="Training variety — lower is better (< 1.5)">?</span>
+            </div>
+            <div class="tlk-value" style="color: {monotony < 1.5 ? 'var(--success)' : monotony < 2 ? 'var(--warning)' : 'var(--danger)'}">{monotony.toFixed(2)}</div>
+            <div class="tlk-desc">{monotony < 1.5 ? 'Good training variety' : monotony < 2 ? 'Moderate monotony' : 'High monotony — risk of injury'}</div>
+          </div>
+          <div class="tlk-card">
+            <div class="tlk-header">
+              <span class="tlk-label">Weekly Strain</span>
+              <span class="tlk-info" title="Monotony × Weekly TRIMP">?</span>
+            </div>
+            <div class="tlk-value">{Math.round(weeklyStrain)}</div>
+            <div class="tlk-desc">Overall weekly training stress</div>
+          </div>
+          <div class="tlk-card">
+            <div class="tlk-header">
+              <span class="tlk-label">Weekly TRIMP</span>
+              <span class="tlk-info" title="Last 7 days training load">?</span>
+            </div>
+            <div class="tlk-value">{Math.round(weeklyTrimp)}</div>
+            <div class="tlk-desc">Last 7 days training load</div>
+          </div>
+        </div>
+      {/if}
+
+      {#if polarisedData && polarisedData.total_points > 0}
+        <div class="polarised-row">
+          <div class="polarised-header">
+            <span class="polarised-title">Polarised training (last 30 days)</span>
+            <span class="tlk-info" title="% of time in each heart rate zone group">?</span>
+          </div>
+          <div class="polarised-bars">
+            <div class="polarised-segment">
+              <div class="polarised-pct">{polarisedData.z1_2_pct.toFixed(1)}%</div>
+              <div class="polarised-label">Z1-2 (Low)</div>
+            </div>
+            <div class="polarised-segment">
+              <div class="polarised-pct">{polarisedData.z3_pct.toFixed(1)}%</div>
+              <div class="polarised-label">Z3 (Mod)</div>
+            </div>
+            <div class="polarised-segment">
+              <div class="polarised-pct">{polarisedData.z4_5_pct.toFixed(1)}%</div>
+              <div class="polarised-label">Z4-5 (High)</div>
+            </div>
+          </div>
+          <div class="polarised-bar-track">
+            <div class="polarised-bar z1" style="width: {polarisedData.z1_2_pct}%"></div>
+            <div class="polarised-bar z3" style="width: {polarisedData.z3_pct}%"></div>
+            <div class="polarised-bar z5" style="width: {polarisedData.z4_5_pct}%"></div>
+          </div>
         </div>
       {/if}
     </div>
@@ -962,57 +1056,123 @@
     margin: 0;
     color: var(--text);
   }
-  .stat-grid {
+  .tlk-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 12px;
     margin-bottom: 16px;
   }
-  .metric-row {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-  .metric-card {
+  .tlk-card {
     background: var(--card-bg, var(--surface));
     border: var(--card-border, 0.5px solid var(--border));
     border-radius: var(--card-radius, 10px);
-    padding: 14px 16px;
-    text-align: center;
-    flex: 1;
-    max-width: 250px;
-    min-width: 180px;
+    padding: 16px 18px;
   }
-  .metric-label {
-    font-size: var(--font-size-xs, 11px);
-    font-weight: var(--font-weight-medium, 500);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-secondary);
+  .tlk-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     margin-bottom: 6px;
   }
-  .metric-value {
-    font-size: var(--font-size-3xl, 26px);
-    font-weight: var(--font-weight-medium, 500);
-    line-height: 1.1;
+  .tlk-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
   }
-  .metric-desc {
-    font-size: var(--font-size-xs, 11px);
-    font-weight: var(--font-weight-regular, 400);
+  .tlk-info {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--bg, #f0f0f0);
+    color: var(--text-tertiary, #999);
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: help;
+    flex-shrink: 0;
+  }
+  .tlk-value {
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1.1;
+    color: var(--text);
+  }
+  .tlk-desc {
+    font-size: 11px;
     color: var(--text-secondary);
     margin-top: 4px;
   }
-  .metric-badge {
-    display: inline-block;
-    font-size: var(--font-size-xs, 11px);
-    font-weight: var(--font-weight-medium, 500);
-    padding: 2px 8px;
-    border-radius: 10px;
-    margin-top: 6px;
-    text-transform: capitalize;
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
   }
+  .view-details-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+  .view-details-link:hover {
+    text-decoration: underline;
+  }
+  .polarised-row {
+    background: var(--card-bg, var(--surface));
+    border: var(--card-border, 0.5px solid var(--border));
+    border-radius: var(--card-radius, 10px);
+    padding: 16px 18px;
+    margin-top: 12px;
+  }
+  .polarised-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .polarised-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .polarised-bars {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .polarised-segment {
+    text-align: center;
+  }
+  .polarised-pct {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .polarised-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+  .polarised-bar-track {
+    display: flex;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    gap: 2px;
+  }
+  .polarised-bar {
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  .polarised-bar.z1 { background: #3b82f6; }
+  .polarised-bar.z3 { background: #f59e0b; }
+  .polarised-bar.z5 { background: #ef4444; }
   .chart-card {
     background: var(--card-bg, var(--surface));
     border: var(--card-border, 0.5px solid var(--border));
@@ -1348,7 +1508,7 @@
   @media (max-width: 768px) {
     .page { padding: 16px; }
     h1 { font-size: var(--font-size-2xl, 22px); }
-    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .tlk-grid { grid-template-columns: repeat(2, 1fr); }
     .chart-row { flex-direction: column; }
     .chart-card.half { width: 100%; }
   }

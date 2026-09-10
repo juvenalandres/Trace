@@ -205,6 +205,13 @@ export interface WeeklyStatsItem {
   elevation_m: number;
 }
 
+export interface PolarisedTrainingResponse {
+  z1_2_pct: number;
+  z3_pct: number;
+  z4_5_pct: number;
+  total_points: number;
+}
+
 export interface DashboardResponse {
   week: PeriodStats;
   prev_week: PeriodStats;
@@ -359,6 +366,11 @@ export const statsApi = {
   weeklyStats: (weeks?: number) => {
     const params = weeks ? `?weeks=${weeks}` : '';
     return api.get<WeeklyStatsItem[]>(`/stats/weekly${params}`);
+  },
+
+  polarisedTraining: (days?: number) => {
+    const params = days ? `?days=${days}` : '';
+    return api.get<PolarisedTrainingResponse>(`/stats/polarised-training${params}`);
   },
 };
 

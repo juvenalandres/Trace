@@ -1537,6 +1537,73 @@ async def weekly_stats(
     return result
 
 
+@app.get("/api/stats/polarised-training")
+async def polarised_training(
+    days: int = Query(30, le=90),
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Return polarised training breakdown (% time in Z1-2, Z3, Z4-5)."""
+    cache = get_stats_cache()
+    cache_key = f"{user.id}:polarised:{days}"
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+
+    today = datetime.date.today()
+    start_date = today - datetime.timedelta(days=days)
+    start_dt = datetime.datetime.combine(start_date, datetime.time.min, tzinfo=datetime.timezone.utc)
+
+    q = select(ActivityStats.simplified_time_series).join(
+        Activity, Activity.id == ActivityStats.activity_id
+    ).where(
+        Activity.user_id == user.id,
+        Activity.start_time >= start_dt,
+        ActivityStats.simplified_time_series.isnot(None),
+    )
+    rows = (await db.execute(q)).all()
+
+    max_hr = user.max_hr or 190
+    resting_hr = user.resting_hr or 60
+    hr_range = max_hr - resting_hr if max_hr > resting_hr else 130
+
+    z1_2 = 0
+    z3 = 0
+    z4_5 = 0
+    total = 0
+
+    for row in rows:
+        if not row[0]:
+            continue
+        try:
+            import json as _json
+            points = _json.loads(row[0])
+        except Exception:
+            continue
+        for p in points:
+            hr = p.get("hr")
+            if hr is None:
+                continue
+            total += 1
+            pct = (hr - resting_hr) / hr_range
+            if pct < 0.68:
+                z1_2 += 1
+            elif pct < 0.81:
+                z3 += 1
+            else:
+                z4_5 += 1
+
+    result = {
+        "z1_2_pct": round(z1_2 / total * 100, 2) if total > 0 else 0,
+        "z3_pct": round(z3 / total * 100, 2) if total > 0 else 0,
+        "z4_5_pct": round(z4_5 / total * 100, 2) if total > 0 else 0,
+        "total_points": total,
+    }
+
+    cache.set(cache_key, result)
+    return result
+
+
 @app.get("/api/stats/activity-routes")
 async def activity_routes(
     sport_type: str | None = None,
