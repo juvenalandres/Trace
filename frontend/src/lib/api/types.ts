@@ -197,6 +197,14 @@ export interface HRDistributionItem {
   percent: number;
 }
 
+export interface WeeklyStatsItem {
+  week_start: string;
+  count: number;
+  distance_m: number;
+  duration_s: number;
+  elevation_m: number;
+}
+
 export interface DashboardResponse {
   week: PeriodStats;
   prev_week: PeriodStats;
@@ -346,6 +354,11 @@ export const statsApi = {
   hrDistribution: (zones?: string) => {
     const params = zones ? `?zones=${encodeURIComponent(zones)}` : '';
     return api.get<HRDistributionItem[]>(`/stats/hr-distribution${params}`);
+  },
+
+  weeklyStats: (weeks?: number) => {
+    const params = weeks ? `?weeks=${weeks}` : '';
+    return api.get<WeeklyStatsItem[]>(`/stats/weekly${params}`);
   },
 };
 

@@ -11,6 +11,7 @@
   import EmptyState from '$lib/components/EmptyState.svelte';
   import TimeDistribution from '$lib/components/TimeDistribution.svelte';
   import HRDistribution from '$lib/components/HRDistribution.svelte';
+  import WeeklyChart from '$lib/components/WeeklyChart.svelte';
 
   interface Props {
     onNavigate?: (page: string, id?: number) => void;
@@ -99,7 +100,7 @@
     highest_elevation: { label: 'Highest elevation', icon: 'elevationUp', color: 'var(--warning)', bg: 'var(--warning-bg)', unit: 'm', format: (v) => `${Math.round(v).toLocaleString()} m` },
     fastest_speed: { label: 'Fastest avg speed', icon: 'speed', color: 'var(--chart-2)', bg: 'color-mix(in srgb, var(--chart-2) 12%, transparent)', unit: 'km/h', format: formatSpeed },
     max_speed: { label: 'Top speed', icon: 'bolt', color: 'var(--chart-3)', bg: 'color-mix(in srgb, var(--chart-3) 12%, transparent)', unit: 'km/h', format: formatSpeed },
-    highest_hr: { label: 'Highest avg HR', icon: 'heart', color: 'var(--chart-4)', bg: 'color-mix(in srgb, var(--chart-4) 12%, transparent)', unit: 'bpm', format: (v) => `${Math.round(v)} bpm` },
+    highest_hr: { label: 'Highest avg HR', icon: 'heart', color: 'var(--danger)', bg: 'var(--danger-bg)', unit: 'bpm', format: (v) => `${Math.round(v)} bpm` },
   };
 
   interface YearData {
@@ -410,7 +411,11 @@
     <div class="td-row">
       <TimeDistribution groupBy="weekday" />
       <TimeDistribution groupBy="time_of_day" />
+    </div>
+
+    <div class="td-row">
       <HRDistribution />
+      <WeeklyChart />
     </div>
 
     {#if prs}
@@ -628,7 +633,7 @@
 
   .td-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 16px;
     margin-bottom: 28px;
   }

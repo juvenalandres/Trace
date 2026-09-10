@@ -1490,6 +1490,53 @@ async def hr_distribution(
     return result
 
 
+@app.get("/api/stats/weekly")
+async def weekly_stats(
+    weeks: int = 12,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Return weekly aggregated stats for the last N weeks."""
+    cache = get_stats_cache()
+    cache_key = f"{user.id}:weekly:{weeks}"
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+
+    today = datetime.date.today()
+    start_date = today - datetime.timedelta(weeks=weeks)
+    start_dt = datetime.datetime.combine(start_date, datetime.time.min, tzinfo=datetime.timezone.utc)
+
+    q = (
+        select(
+            func.date_trunc("week", Activity.start_time).label("week_start"),
+            func.count(Activity.id).label("count"),
+            func.coalesce(func.sum(ActivityStats.distance_m), 0).label("distance_m"),
+            func.coalesce(func.sum(ActivityStats.duration_s), 0).label("duration_s"),
+            func.coalesce(func.sum(ActivityStats.elevation_gain), 0).label("elevation_m"),
+        )
+        .join(ActivityStats, ActivityStats.activity_id == Activity.id)
+        .where(Activity.user_id == user.id, Activity.start_time >= start_dt)
+        .group_by("week_start")
+        .order_by("week_start")
+    )
+    rows = (await db.execute(q)).all()
+
+    result = [
+        {
+            "week_start": r[0].strftime("%Y-%m-%d") if r[0] else None,
+            "count": r[1],
+            "distance_m": round(r[2], 1),
+            "duration_s": round(r[3], 1),
+            "elevation_m": round(r[4], 1),
+        }
+        for r in rows
+    ]
+
+    cache.set(cache_key, result)
+    return result
+
+
 @app.get("/api/stats/activity-routes")
 async def activity_routes(
     sport_type: str | None = None,

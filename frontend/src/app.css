@@ -61,14 +61,14 @@
   --chart-6: #06b6d4;
   --accent-teal: #14b8a6;
 
-  /* HR Zone Colors (5 zones) */
-  --zone-hr-1: #86efac;
-  --zone-hr-2: #fde68a;
-  --zone-hr-3: #fdba74;
-  --zone-hr-4: #fca5a5;
-  --zone-hr-5: #f87171;
-  --zone-hr-6: #dc2626;
-  --zone-hr-7: #7f1d1d;
+  /* HR Zone Colors (7 zones) — red shades */
+  --zone-hr-1: #fecaca;
+  --zone-hr-2: #fca5a5;
+  --zone-hr-3: #f87171;
+  --zone-hr-4: #ef4444;
+  --zone-hr-5: #dc2626;
+  --zone-hr-6: #b91c1c;
+  --zone-hr-7: #991b1b;
 
   /* Power Zone Colors (7 zones) */
   --zone-power-1: #93c5fd;
@@ -184,13 +184,13 @@
   --chart-6: #22d3ee;
   --accent-teal: #2dd4bf;
 
-  --zone-hr-1: #22c55e;
-  --zone-hr-2: #eab308;
-  --zone-hr-3: #f97316;
-  --zone-hr-4: #ef4444;
-  --zone-hr-5: #dc2626;
+  --zone-hr-1: #fca5a5;
+  --zone-hr-2: #f87171;
+  --zone-hr-3: #ef4444;
+  --zone-hr-4: #dc2626;
+  --zone-hr-5: #b91c1c;
   --zone-hr-6: #991b1b;
-  --zone-hr-7: #450a0a;
+  --zone-hr-7: #7f1d1d;
 
   --zone-power-1: #60a5fa;
   --zone-power-2: #3b82f6;

@@ -7,7 +7,11 @@
   let data = $state<HRDistributionItem[]>([]);
   let loading = $state(true);
 
-  const ZONE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#dc2626', '#7c3aed', '#be185d'];
+  const zoneColors = $derived(
+    data.length === 7
+      ? ['var(--zone-hr-1)', 'var(--zone-hr-2)', 'var(--zone-hr-3)', 'var(--zone-hr-4)', 'var(--zone-hr-5)', 'var(--zone-hr-6)', 'var(--zone-hr-7)']
+      : ['var(--zone-hr-1)', 'var(--zone-hr-2)', 'var(--zone-hr-3)', 'var(--zone-hr-4)', 'var(--zone-hr-5)']
+  );
 
   async function loadData() {
     loading = true;
@@ -44,7 +48,7 @@
       const y2 = cy + r * Math.sin(endAngle);
       const d = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z`;
       const rangeLabel = i === 0 ? `< ${item.max}` : i === data.length - 1 ? `> ${item.min}` : `${item.min}–${item.max}`;
-      return { ...item, d, color: ZONE_COLORS[i % ZONE_COLORS.length], rangeLabel };
+      return { ...item, d, color: zoneColors[i % zoneColors.length], rangeLabel };
     });
   });
 
@@ -107,6 +111,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-height: 380px;
   }
 
   .hrd-header {
@@ -123,11 +128,11 @@
     width: 28px;
     height: 28px;
     border-radius: 7px;
-    background: color-mix(in srgb, #ef4444 12%, transparent);
+    background: var(--danger-bg);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #ef4444;
+    color: var(--danger);
   }
   .hrd-title {
     font-size: 15px;
@@ -147,11 +152,13 @@
   .hrd-pie-section {
     display: flex;
     justify-content: center;
+    align-items: center;
+    flex: 1;
     padding: 4px 0;
   }
   .hrd-pie-svg {
-    width: 180px;
-    height: 180px;
+    width: 220px;
+    height: 220px;
     cursor: pointer;
   }
   .hrd-pie-slice {

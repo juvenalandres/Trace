@@ -50,7 +50,7 @@
     { key: 'longest_duration' as const, label: 'Longest Duration', unit: '', convert: (v: number) => formatDuration(v), color: 'var(--chart-5)', icon: 'duration' },
     { key: 'highest_elevation' as const, label: 'Highest Elevation', unit: 'm', convert: (v: number) => v.toFixed(0), color: 'var(--warning)', icon: 'elevation' },
     { key: 'fastest_speed' as const, label: 'Fastest Avg Speed', unit: 'km/h', convert: (v: number) => (v * 3.6).toFixed(1), color: 'var(--chart-3)', icon: 'speed' },
-    { key: 'highest_hr' as const, label: 'Highest Avg HR', unit: 'bpm', convert: (v: number) => v.toFixed(0), color: 'var(--chart-2)', icon: 'heart' },
+    { key: 'highest_hr' as const, label: 'Highest Avg HR', unit: 'bpm', convert: (v: number) => v.toFixed(0), color: 'var(--danger)', icon: 'heart' },
     { key: 'max_speed' as const, label: 'Max Speed', unit: 'km/h', convert: (v: number) => (v * 3.6).toFixed(1), color: 'var(--chart-6)', icon: 'speed' },
   ];
 
