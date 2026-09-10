@@ -43,7 +43,11 @@
       const x2 = cx + r * Math.cos(endAngle);
       const y2 = cy + r * Math.sin(endAngle);
       const d = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z`;
-      return { ...item, d, pct, color: PIE_COLORS[i % PIE_COLORS.length] };
+      const midAngle = (startAngle + endAngle) / 2;
+      const labelR = r * 0.55;
+      const lx = cx + labelR * Math.cos(midAngle);
+      const ly = cy + labelR * Math.sin(midAngle);
+      return { ...item, d, pct, color: PIE_COLORS[i % PIE_COLORS.length], lx, ly };
     });
   });
 
@@ -94,6 +98,9 @@
             onmouseleave={() => hoveredIdx = null}
             onmousemove={handleMouseMove}
           />
+          {#if slice.pct >= 8}
+            <text x={slice.lx} y={slice.ly} text-anchor="middle" dominant-baseline="central" class="td-pie-label">{slice.pct.toFixed(1)}%</text>
+          {/if}
         {/each}
       </svg>
     </div>
@@ -175,6 +182,13 @@
   .td-pie-slice.hovered {
     opacity: 0.85;
     transform: scale(1.03);
+  }
+
+  .td-pie-label {
+    font-size: 8px;
+    font-weight: 600;
+    fill: #fff;
+    pointer-events: none;
   }
 
   .td-tooltip {
