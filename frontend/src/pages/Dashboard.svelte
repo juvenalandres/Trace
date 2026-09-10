@@ -330,7 +330,9 @@
     </div>
 
     <!-- Monthly Chart -->
-    <MonthlyChart />
+    <div class="section-gap">
+      <MonthlyChart />
+    </div>
 
     <!-- Recent Activities -->
     {#if recentActivities.length > 0}
@@ -538,6 +540,9 @@
   }
 
   /* Dash Card */
+  .section-gap {
+    margin-bottom: var(--space-5);
+  }
   .dash-card {
     margin-bottom: 0;
   }
