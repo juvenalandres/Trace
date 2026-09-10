@@ -88,7 +88,7 @@
 
   const metricConfig = {
     distance: { label: 'Distance', key: 'distance_m' as const, unit: 'km', format: (v: number) => `${formatKm(v)} km`, yFormat: (v: number) => `${Math.round(v)} km` },
-    time: { label: 'Time', key: 'duration_s' as const, unit: 'h', format: (v: number) => formatDurationLong(v), yFormat: (v: number) => `${Math.round(v / 3600)}h` },
+    time: { label: 'Time', key: 'duration_s' as const, unit: 'h', format: (v: number) => formatDurationLong(v), yFormat: (v: number) => `${Math.round(v)}h` },
     elevation: { label: 'Elevation', key: 'elevation_m' as const, unit: 'm', format: (v: number) => `${Math.round(v).toLocaleString()} m`, yFormat: (v: number) => `${Math.round(v).toLocaleString()} m` },
   };
 
@@ -162,7 +162,7 @@
     chart = new uPlot({
       width: chartContainer.clientWidth,
       height: 280,
-      padding: [10, 50, 15, 0],
+      padding: [10, 10, 15, 0],
       cursor: {
         x: {
           formatter: (_u, val) => MONTH_LABELS[val] ?? '',
@@ -182,6 +182,7 @@
         {
           stroke: '#888',
           grid: { stroke: '#eee' },
+          size: 60,
           values: (_u, ticks) => ticks.map(t => cfg.yFormat(t)),
         },
       ],
@@ -206,7 +207,7 @@
               const monthLabel = MONTH_LABELS[idx] ?? '';
               let html = `<div style="font-weight:600;margin-bottom:4px">${monthLabel}</div>`;
               for (let si = 0; si < years.length; si++) {
-                const val = u.series[si + 1]._value?.[idx] ?? 0;
+                const val = u.data[si + 1]?.[idx] ?? 0;
                 if (!isNaN(val) && val > 0) {
                   const color = seriesColors[si];
                   html += `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block"></span>${years[si]}: <strong>${cfg.yFormat(val)}</strong></div>`;
@@ -513,6 +514,7 @@
 
   .yt-table {
     margin-top: 16px;
+    width: 100%;
   }
   .yt-thead {
     border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.06));
@@ -520,9 +522,10 @@
   }
   .yt-tr {
     display: grid;
-    grid-template-columns: 60px 100px 120px 100px 120px 120px 130px 100px;
+    grid-template-columns: 0.6fr 1fr 1.2fr 1fr 1.2fr 1.1fr 1.3fr 0.9fr;
     align-items: center;
     padding: 6px 0;
+    width: 100%;
   }
   .yt-th {
     font-size: 11px;
@@ -692,7 +695,7 @@
     .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
     .td-row { grid-template-columns: 1fr; }
     .pr-grid { grid-template-columns: repeat(2, 1fr); }
-    .yt-tr { grid-template-columns: 50px 80px 100px 80px 100px 100px 110px 80px; font-size: 11px; }
+    .yt-tr { grid-template-columns: 0.5fr 1fr 1.2fr 1fr 1.2fr 1fr 1.3fr 0.8fr; font-size: 11px; }
     .metric-btns { flex-wrap: wrap; }
   }
 </style>
