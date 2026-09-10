@@ -5,6 +5,7 @@
   import ErrorBanner from '$lib/components/ErrorBanner.svelte';
   import MonthHeatmap from '$lib/components/MonthHeatmap.svelte';
   import SportBreakdown from '$lib/components/SportBreakdown.svelte';
+  import MonthlyChart from '$lib/components/MonthlyChart.svelte';
   import { statsApi, userApi, activitiesApi } from '$lib/api/types';
   import type { DashboardResponse, PeriodStats, User, HeatmapDay, VolumeResponse } from '$lib/api/types';
 
@@ -327,6 +328,9 @@
         {/if}
       </div>
     </div>
+
+    <!-- Monthly Chart -->
+    <MonthlyChart />
 
     <!-- Recent Activities -->
     {#if recentActivities.length > 0}

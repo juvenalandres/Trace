@@ -394,7 +394,7 @@
       series.push({
         stroke: colors[i % colors.length],
         width: 2,
-        points: { show: true, size: 4 },
+        points: { show: true, size: 4, stroke: colors[i % colors.length], fill: '#fff', width: 1.5 },
       });
     });
 

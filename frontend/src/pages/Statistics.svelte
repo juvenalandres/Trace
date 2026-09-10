@@ -193,7 +193,7 @@
         ...years.map((year, i) => ({
           stroke: seriesColors[i],
           width: 2,
-          points: { size: 0 },
+          points: { size: 3, stroke: seriesColors[i], fill: '#fff', width: 1.5 },
           label: String(year),
         })),
       ],
