@@ -49,7 +49,7 @@
       const d = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z`;
       const rangeLabel = i === 0 ? `< ${item.max}` : i === data.length - 1 ? `> ${item.min}` : `${item.min}–${item.max}`;
       const midAngle = (startAngle + endAngle) / 2;
-      const labelR = r + 18;
+      const labelR = r + 28;
       const lx = cx + labelR * Math.cos(midAngle);
       const ly = cy + labelR * Math.sin(midAngle);
       const lineStartR = r + 4;
@@ -97,7 +97,8 @@
           />
           {#if slice.percent >= 8}
             <line x1={slice.lineStartX} y1={slice.lineStartY} x2={slice.lx} y2={slice.ly} stroke={slice.color} stroke-width="1" />
-            <text x={slice.lx} y={slice.ly} text-anchor="middle" dominant-baseline="central" class="hrd-pie-label">{slice.percent.toFixed(1)}%</text>
+            <text x={slice.lx} y={slice.ly - 6} text-anchor="middle" dominant-baseline="central" class="hrd-pie-label-name">{slice.zone}</text>
+            <text x={slice.lx} y={slice.ly + 7} text-anchor="middle" dominant-baseline="central" class="hrd-pie-label-pct">{slice.percent.toFixed(1)}%</text>
           {/if}
         {/each}
       </svg>
@@ -183,10 +184,16 @@
     transform: scale(1.03);
   }
 
-  .hrd-pie-label {
-    font-size: 8px;
+  .hrd-pie-label-name {
+    font-size: 14px;
     font-weight: 600;
     fill: var(--text);
+    pointer-events: none;
+  }
+  .hrd-pie-label-pct {
+    font-size: 12px;
+    font-weight: 500;
+    fill: var(--text-secondary);
     pointer-events: none;
   }
 
