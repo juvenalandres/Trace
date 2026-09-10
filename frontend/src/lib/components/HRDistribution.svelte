@@ -49,10 +49,13 @@
       const d = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z`;
       const rangeLabel = i === 0 ? `< ${item.max}` : i === data.length - 1 ? `> ${item.min}` : `${item.min}–${item.max}`;
       const midAngle = (startAngle + endAngle) / 2;
-      const labelR = r * 0.55;
+      const labelR = r + 18;
       const lx = cx + labelR * Math.cos(midAngle);
       const ly = cy + labelR * Math.sin(midAngle);
-      return { ...item, d, color: zoneColors[i % zoneColors.length], rangeLabel, lx, ly };
+      const lineStartR = r + 4;
+      const lineStartX = cx + lineStartR * Math.cos(midAngle);
+      const lineStartY = cy + lineStartR * Math.sin(midAngle);
+      return { ...item, d, color: zoneColors[i % zoneColors.length], rangeLabel, lx, ly, lineStartX, lineStartY };
     });
   });
 
@@ -79,7 +82,7 @@
     </div>
 
     <div class="hrd-pie-section">
-      <svg viewBox="0 0 220 220" class="hrd-pie-svg" onmousemove={handleMouseMove}>
+      <svg viewBox="0 0 240 240" class="hrd-pie-svg" onmousemove={handleMouseMove}>
         {#each slices as slice, i}
           <path
             d={slice.d}
@@ -93,6 +96,7 @@
             onmousemove={handleMouseMove}
           />
           {#if slice.percent >= 8}
+            <line x1={slice.lineStartX} y1={slice.lineStartY} x2={slice.lx} y2={slice.ly} stroke={slice.color} stroke-width="1" />
             <text x={slice.lx} y={slice.ly} text-anchor="middle" dominant-baseline="central" class="hrd-pie-label">{slice.percent.toFixed(1)}%</text>
           {/if}
         {/each}
@@ -167,6 +171,7 @@
     width: 220px;
     height: 220px;
     cursor: pointer;
+    overflow: visible;
   }
   .hrd-pie-slice {
     transition: opacity 0.15s ease, transform 0.15s ease;
@@ -181,7 +186,7 @@
   .hrd-pie-label {
     font-size: 8px;
     font-weight: 600;
-    fill: #fff;
+    fill: var(--text);
     pointer-events: none;
   }
 
