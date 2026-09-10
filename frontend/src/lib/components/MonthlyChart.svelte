@@ -17,13 +17,32 @@
 
   let metric = $state<'distance' | 'time' | 'elevation'>('distance');
 
-  const metricConfig: Record<string, { label: string; unit: string; key: string; yFormat: (v: number) => string }> = {
-    distance: { label: 'Distance', unit: 'km', key: 'distance_m', yFormat: (v: number) => `${Math.round(v)} km` },
-    time: { label: 'Time', unit: 'h', key: 'duration_s', yFormat: (v: number) => `${Math.round(v)}h` },
-    elevation: { label: 'Elevation', unit: 'm', key: 'elevation_m', yFormat: (v: number) => `${Math.round(v)} m` },
+  const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const YEAR_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+
+  const metricConfig: Record<string, { label: string; key: string; yFormat: (v: number) => string }> = {
+    distance: { label: 'Distance', key: 'distance_m', yFormat: (v: number) => `${Math.round(v)} km` },
+    time: { label: 'Time', key: 'duration_s', yFormat: (v: number) => `${Math.round(v)}h` },
+    elevation: { label: 'Elevation', key: 'elevation_m', yFormat: (v: number) => `${Math.round(v)} m` },
   };
 
-  const LINE_COLOR = '#ef4444';
+  interface YearData {
+    year: number;
+    months: { month: number; value: number }[];
+  }
+
+  const yearlyData = $derived.by((): YearData[] => {
+    if (!volume) return [];
+    const byYear = new Map<number, YearData>();
+    for (const m of volume.monthly) {
+      const [y, mo] = m.month.split('-').map(Number);
+      if (!byYear.has(y)) byYear.set(y, { year: y, months: [] });
+      byYear.get(y)!.months.push({ month: mo, value: (m as Record<string, number>)[metricConfig[metric].key] ?? 0 });
+    }
+    return Array.from(byYear.values()).sort((a, b) => a.year - b.year);
+  });
+
+  const seriesColors = $derived(yearlyData.map((_, i) => YEAR_COLORS[i % YEAR_COLORS.length]));
 
   async function loadData() {
     loading = true;
@@ -37,30 +56,38 @@
   }
 
   function buildChart() {
-    if (!chartContainer || !volume || volume.monthly.length === 0) return;
+    if (!chartContainer || yearlyData.length === 0) return;
 
     chart?.destroy();
     chart = null;
 
     const cfg = metricConfig[metric];
-    const sorted = [...volume.monthly].sort((a, b) => a.month.localeCompare(b.month));
-    const last12 = sorted.slice(-12);
+    const years = yearlyData.map(y => y.year);
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
 
-    const xVals = new Float64Array(last12.length);
-    const vals = new Float64Array(last12.length);
-    const labels: string[] = [];
+    const xVals = new Float64Array(12);
+    for (let i = 0; i < 12; i++) xVals[i] = i;
 
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const seriesData: Float64Array[] = years.map(year => {
+      const yd = yearlyData.find(y => y.year === year);
+      const vals = new Float64Array(12);
+      if (yd) {
+        const maxMonth = year === currentYear ? currentMonth : 12;
+        let cumulative = 0;
+        for (let m = 0; m < maxMonth; m++) {
+          const md = yd.months.find(x => x.month === m + 1);
+          cumulative += md ? md.value : 0;
+          vals[m] = metric === 'time' ? cumulative / 3600 : metric === 'distance' ? cumulative / 1000 : cumulative;
+        }
+        for (let m = maxMonth; m < 12; m++) vals[m] = NaN;
+      } else {
+        vals.fill(NaN);
+      }
+      return vals;
+    });
 
-    for (let i = 0; i < last12.length; i++) {
-      xVals[i] = i;
-      const raw = (last12[i] as Record<string, number>)[cfg.key] ?? 0;
-      vals[i] = metric === 'time' ? raw / 3600 : metric === 'distance' ? raw / 1000 : raw;
-      const [y, m] = last12[i].month.split('-').map(Number);
-      labels.push(`${months[m - 1]} ${y}`);
-    }
-
-    const plotData: uPlot.AlignedData = [xVals, vals];
+    const plotData: uPlot.AlignedData = [xVals, ...seriesData];
 
     chart = new uPlot({
       width: chartContainer.clientWidth,
@@ -68,7 +95,7 @@
       padding: [10, 10, 15, 0],
       cursor: {
         x: {
-          formatter: (_u, val) => labels[val] ?? '',
+          formatter: (_u, val) => MONTH_LABELS[val] ?? '',
         },
         points: {
           size: 4,
@@ -80,8 +107,7 @@
         {
           stroke: '#888',
           grid: { show: false },
-          values: (_u, ticks) => ticks.map(t => labels[t] ?? ''),
-          size: 40,
+          values: (_u, ticks) => ticks.map(t => MONTH_LABELS[t] ?? ''),
         },
         {
           stroke: '#888',
@@ -92,32 +118,40 @@
       ],
       series: [
         {},
-        {
-          stroke: LINE_COLOR,
+        ...years.map((year, i) => ({
+          stroke: seriesColors[i],
           width: 2,
-          points: { size: 5, stroke: LINE_COLOR, fill: '#fff', width: 1.5 },
-          label: cfg.label,
-        },
+          points: { size: 10, stroke: seriesColors[i], fill: '#fff', width: 1.5 },
+          label: String(year),
+        })),
       ],
-      legend: { show: false },
+      legend: {
+        show: true,
+        live: false,
+      },
       hooks: {
         setCursor: [
           (u: uPlot) => {
             const idx = u.cursor.idx;
             if (idx != null && tooltipEl) {
-              const monthLabel = labels[idx] ?? '';
-              const val = u.data[1]?.[idx] ?? 0;
-              if (!isNaN(val)) {
-                tooltipEl.innerHTML = `<div style="font-weight:600;margin-bottom:2px">${monthLabel}</div><div>${cfg.yFormat(val)}</div>`;
-                tooltipEl.style.display = 'block';
-                let finalLeft = mouseX + 12;
-                let finalTop = mouseY - 36;
-                const tw = tooltipEl.offsetWidth;
-                if (finalLeft + tw > window.innerWidth) finalLeft = mouseX - tw - 12;
-                if (finalTop < 0) finalTop = mouseY + 12;
-                tooltipEl.style.left = `${finalLeft}px`;
-                tooltipEl.style.top = `${finalTop}px`;
+              const monthLabel = MONTH_LABELS[idx] ?? '';
+              let html = `<div style="font-weight:600;margin-bottom:4px">${monthLabel}</div>`;
+              for (let si = 0; si < years.length; si++) {
+                const val = u.data[si + 1]?.[idx] ?? 0;
+                if (!isNaN(val) && val > 0) {
+                  const color = seriesColors[si];
+                  html += `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block"></span>${years[si]}: <strong>${cfg.yFormat(val)}</strong></div>`;
+                }
               }
+              tooltipEl.innerHTML = html;
+              tooltipEl.style.display = 'block';
+              let finalLeft = mouseX + 12;
+              let finalTop = mouseY - 36;
+              const tw = tooltipEl.offsetWidth;
+              if (finalLeft + tw > window.innerWidth) finalLeft = mouseX - tw - 12;
+              if (finalTop < 0) finalTop = mouseY + 12;
+              tooltipEl.style.left = `${finalLeft}px`;
+              tooltipEl.style.top = `${finalTop}px`;
             }
           },
         ],
@@ -154,7 +188,7 @@
   });
 
   $effect(() => {
-    if (chartContainer && volume && volume.monthly.length > 0 && !loading && chartContainer.clientWidth > 0) {
+    if (chartContainer && yearlyData.length > 0 && !loading && chartContainer.clientWidth > 0) {
       buildChart();
       setupResize();
     }
@@ -162,7 +196,7 @@
 
   $effect(() => {
     void metric;
-    if (volume && volume.monthly.length > 0 && !loading) {
+    if (yearlyData.length > 0 && !loading) {
       buildChart();
     }
   });

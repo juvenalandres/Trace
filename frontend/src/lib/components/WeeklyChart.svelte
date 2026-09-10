@@ -100,7 +100,7 @@
         {
           stroke: LINE_COLOR,
           width: 2,
-          points: { size: 5, stroke: LINE_COLOR, fill: '#fff', width: 1.5 },
+          points: { size: 10, stroke: LINE_COLOR, fill: '#fff', width: 1.5 },
           label: cfg.label,
         },
       ],
