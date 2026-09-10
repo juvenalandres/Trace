@@ -28,33 +28,33 @@
 
   const total = $derived(data.reduce((s, d) => s + d.count, 0));
 
-  const pieGradient = $derived.by(() => {
-    if (data.length === 0 || total === 0) return '';
-    let acc = 0;
-    const stops: string[] = [];
-    for (let i = 0; i < data.length; i++) {
-      const pct = (data[i].count / total) * 100;
-      const color = PIE_COLORS[i % PIE_COLORS.length];
-      stops.push(`${color} ${acc}% ${acc + pct}%`);
-      acc += pct;
-    }
-    return `conic-gradient(${stops.join(', ')})`;
-  });
-
-  const pieLabels = $derived.by(() => {
+  const slices = $derived.by(() => {
     if (data.length === 0 || total === 0) return [];
+    const cx = 110, cy = 110, r = 100;
     let acc = 0;
     return data.map((item, i) => {
       const pct = (item.count / total) * 100;
-      const midAngle = acc + (pct / 2);
+      const startAngle = (acc / 100) * 2 * Math.PI - Math.PI / 2;
       acc += pct;
-      const rad = ((midAngle - 90) * Math.PI) / 180;
-      const r = 47;
-      const x = 50 + r * Math.cos(rad);
-      const y = 50 + r * Math.sin(rad);
-      return { ...item, x, y, pct, color: PIE_COLORS[i % PIE_COLORS.length] };
+      const endAngle = (acc / 100) * 2 * Math.PI - Math.PI / 2;
+      const largeArc = pct > 50 ? 1 : 0;
+      const x1 = cx + r * Math.cos(startAngle);
+      const y1 = cy + r * Math.sin(startAngle);
+      const x2 = cx + r * Math.cos(endAngle);
+      const y2 = cy + r * Math.sin(endAngle);
+      const d = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z`;
+      return { ...item, d, pct, color: PIE_COLORS[i % PIE_COLORS.length] };
     });
   });
+
+  let hoveredIdx = $state<number | null>(null);
+  let tooltipX = $state(0);
+  let tooltipY = $state(0);
+
+  function handleMouseMove(e: MouseEvent) {
+    tooltipX = e.clientX;
+    tooltipY = e.clientY;
+  }
 
   function formatDurationLong(s: number): string {
     const w = Math.floor(s / 604800);
@@ -81,19 +81,29 @@
     </div>
 
     <div class="td-pie-section">
-      <div class="td-pie-container">
-        <div class="td-pie" style="background: {pieGradient}"></div>
-        {#each pieLabels as label}
-          <div
-            class="td-pie-label"
-            style="left: {label.x}%; top: {label.y}%; transform: translate(-50%, -50%)"
-          >
-            <span class="td-pie-label-name">{label.group}.</span>
-            <span class="td-pie-label-pct">{label.pct.toFixed(2)}%</span>
-          </div>
+      <svg viewBox="0 0 220 220" class="td-pie-svg" onmousemove={handleMouseMove}>
+        {#each slices as slice, i}
+          <path
+            d={slice.d}
+            fill={slice.color}
+            stroke="var(--card-bg, white)"
+            stroke-width="2"
+            class="td-pie-slice"
+            class:hovered={hoveredIdx === i}
+            onmouseenter={() => hoveredIdx = i}
+            onmouseleave={() => hoveredIdx = null}
+            onmousemove={handleMouseMove}
+          />
         {/each}
-      </div>
+      </svg>
     </div>
+
+    {#if hoveredIdx !== null && slices[hoveredIdx]}
+      <div class="td-tooltip" style="left: {tooltipX}px; top: {tooltipY}px">
+        <span class="td-tooltip-name">{slices[hoveredIdx].group}</span>
+        <span class="td-tooltip-pct">{slices[hoveredIdx].pct.toFixed(1)}%</span>
+      </div>
+    {/if}
 
     <div class="td-table">
       <div class="td-thead">
@@ -150,38 +160,46 @@
   .td-pie-section {
     display: flex;
     justify-content: center;
-    padding: 24px 0 8px;
+    padding: 8px 0;
   }
-  .td-pie-container {
-    position: relative;
-    width: 260px;
-    height: 260px;
+  .td-pie-svg {
+    width: 200px;
+    height: 200px;
+    cursor: pointer;
   }
-  .td-pie {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    width: 220px;
-    height: 220px;
-    border-radius: 50%;
+  .td-pie-slice {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    transform-origin: 110px 110px;
   }
-  .td-pie-label {
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  .td-pie-slice:hover,
+  .td-pie-slice.hovered {
+    opacity: 0.85;
+    transform: scale(1.03);
+  }
+
+  .td-tooltip {
+    position: fixed;
     pointer-events: none;
+    z-index: 1000;
+    background: var(--card-bg, var(--surface));
+    border: var(--card-border, 0.5px solid var(--border));
+    border-radius: 8px;
+    padding: 8px 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    transform: translate(12px, -50%);
     white-space: nowrap;
-    transform: translate(-50%, -50%);
   }
-  .td-pie-label-name {
-    font-size: 12px;
+  .td-tooltip-name {
+    font-size: 13px;
     font-weight: 600;
-    color: var(--text-primary, var(--text));
+    color: var(--text);
   }
-  .td-pie-label-pct {
-    font-size: 10px;
-    font-weight: 400;
+  .td-tooltip-pct {
+    font-size: 12px;
+    font-weight: 500;
     color: var(--text-secondary, #666);
   }
 
