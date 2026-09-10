@@ -10,6 +10,7 @@
   import ErrorBanner from '$lib/components/ErrorBanner.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import TimeDistribution from '$lib/components/TimeDistribution.svelte';
+  import HRDistribution from '$lib/components/HRDistribution.svelte';
 
   interface Props {
     onNavigate?: (page: string, id?: number) => void;
@@ -409,6 +410,7 @@
     <div class="td-row">
       <TimeDistribution groupBy="weekday" />
       <TimeDistribution groupBy="time_of_day" />
+      <HRDistribution />
     </div>
 
     {#if prs}
@@ -626,7 +628,7 @@
 
   .td-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 16px;
     margin-bottom: 28px;
   }

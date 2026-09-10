@@ -189,6 +189,14 @@ export interface TimeDistributionItem {
   avg_speed: number | null;
 }
 
+export interface HRDistributionItem {
+  zone: string;
+  min: number;
+  max: number;
+  count: number;
+  percent: number;
+}
+
 export interface DashboardResponse {
   week: PeriodStats;
   prev_week: PeriodStats;
@@ -333,6 +341,11 @@ export const statsApi = {
     if (startDate) params.set('start_date', startDate);
     if (endDate) params.set('end_date', endDate);
     return api.get<TimeDistributionItem[]>(`/stats/time-distribution?${params}`);
+  },
+
+  hrDistribution: (zones?: string) => {
+    const params = zones ? `?zones=${encodeURIComponent(zones)}` : '';
+    return api.get<HRDistributionItem[]>(`/stats/hr-distribution${params}`);
   },
 };
 

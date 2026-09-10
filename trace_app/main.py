@@ -1426,6 +1426,70 @@ async def time_distribution(
     return result
 
 
+@app.get("/api/stats/hr-distribution")
+async def hr_distribution(
+    zones: str = "0-115,115-130,130-150,150-165,165-300",
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Return aggregated HR zone distribution across all activities."""
+    cache = get_stats_cache()
+    cache_key = f"{user.id}:hr-dist:{zones}"
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+
+    zone_ranges = []
+    for z in zones.split(","):
+        parts = z.strip().split("-")
+        if len(parts) == 2:
+            zone_ranges.append({"min": int(parts[0]), "max": int(parts[1])})
+
+    if not zone_ranges:
+        raise HTTPException(status_code=400, detail="Invalid zones format")
+
+    q = select(ActivityStats.simplified_time_series).join(
+        Activity, Activity.id == ActivityStats.activity_id
+    ).where(
+        Activity.user_id == user.id,
+        ActivityStats.simplified_time_series.isnot(None),
+    )
+    rows = (await db.execute(q)).all()
+
+    counts = [0] * len(zone_ranges)
+    for row in rows:
+        if not row[0]:
+            continue
+        try:
+            import json as _json
+            points = _json.loads(row[0])
+        except Exception:
+            continue
+        for p in points:
+            hr = p.get("hr")
+            if hr is None:
+                continue
+            for i, zr in enumerate(zone_ranges):
+                if zr["min"] <= hr < zr["max"]:
+                    counts[i] += 1
+                    break
+
+    total = sum(counts)
+    result = [
+        {
+            "zone": f"Z{i + 1}",
+            "min": zr["min"],
+            "max": zr["max"],
+            "count": counts[i],
+            "percent": round(counts[i] / total * 100, 1) if total > 0 else 0,
+        }
+        for i, zr in enumerate(zone_ranges)
+    ]
+
+    cache.set(cache_key, result)
+    return result
+
+
 @app.get("/api/stats/activity-routes")
 async def activity_routes(
     sport_type: str | None = None,
