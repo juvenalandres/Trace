@@ -117,21 +117,6 @@
     return `${d.getDate()} ${months[d.getMonth()]}`;
   }
 
-  function sparklinePath(data: number[], w: number, h: number): string {
-    if (data.length < 2) return '';
-    const min = Math.min(...data);
-    const max = Math.max(...data);
-    const range = max - min || 1;
-    const pad = 2;
-    const stepX = w / (data.length - 1);
-    const pts = data.map((v, i) => {
-      const x = i * stepX;
-      const y = h - ((v - min) / range) * (h - pad * 2) - pad;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    });
-    return `M${pts.join(' L')}`;
-  }
-
   let currentStats = $derived(
     dashboard ? dashboard[selectedPeriod] : null
   );
@@ -231,11 +216,6 @@
           {:else}
             <div class="metric-trend muted">-</div>
           {/if}
-          <div class="sparkline-wrap">
-            <svg viewBox="0 0 100 16" preserveAspectRatio="none">
-              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.distance_m), 100, 16) : ''} stroke="var(--primary)" stroke-width="1.5" fill="none" />
-            </svg>
-          </div>
         </div>
 
         <div class="dash-metric-card" style="--accent: var(--accent-teal)">
@@ -252,11 +232,6 @@
           {:else}
             <div class="metric-trend muted">-</div>
           {/if}
-          <div class="sparkline-wrap">
-            <svg viewBox="0 0 100 16" preserveAspectRatio="none">
-              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.duration_s), 100, 16) : ''} stroke="var(--accent-teal)" stroke-width="1.5" fill="none" />
-            </svg>
-          </div>
         </div>
 
         <div class="dash-metric-card" style="--accent: var(--warning)">
@@ -273,11 +248,6 @@
           {:else}
             <div class="metric-trend muted">-</div>
           {/if}
-          <div class="sparkline-wrap">
-            <svg viewBox="0 0 100 16" preserveAspectRatio="none">
-              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.elevation_m), 100, 16) : ''} stroke="var(--warning)" stroke-width="1.5" fill="none" />
-            </svg>
-          </div>
         </div>
 
         <div class="dash-metric-card" style="--accent: var(--sport-hike)">
@@ -292,11 +262,6 @@
             {:else}
               -
             {/if}
-          </div>
-          <div class="sparkline-wrap">
-            <svg viewBox="0 0 100 16" preserveAspectRatio="none">
-              <path d={volumeData ? sparklinePath(volumeData.monthly.map(m => m.count), 100, 16) : ''} stroke="var(--sport-hike)" stroke-width="1.5" fill="none" />
-            </svg>
           </div>
         </div>
       </div>
@@ -521,16 +486,6 @@
   .trend-arrow {
     font-weight: var(--font-weight-medium);
   }
-  .sparkline-wrap {
-    margin-top: var(--space-3);
-    height: 16px;
-  }
-  .sparkline-wrap svg {
-    width: 100%;
-    height: 100%;
-    display: block;
-  }
-
   /* Two Column Row */
   .two-col-row {
     display: grid;
